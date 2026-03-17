@@ -22,6 +22,8 @@ class XTTSEngine(TTSEngine):
     def _get_tts(self):
         """Lazy-load the TTS model (heavy, only load once)."""
         if self._tts is None:
+            import os
+            os.environ["COQUI_TOS_AGREED"] = "1"
             from TTS.api import TTS
             logger.info(f"Loading XTTS model on {self.device}...")
             self._tts = TTS(self.model_name).to(self.device)

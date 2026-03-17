@@ -58,11 +58,22 @@ export default function ProjectView({ projectId }: Props) {
   const handleGenerate = async (clipId: string) => {
     if (!projectId) return;
     setGenerating((s) => new Set(s).add(clipId));
+    // Optimistically clear error so UI shows "generating" immediately
+    setProject((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        clips: prev.clips.map((c) =>
+          c.id === clipId ? { ...c, status: "generating", error_message: null } : c
+        ),
+      };
+    });
     try {
       await generateClip(projectId, clipId);
       await load();
     } catch (e) {
       console.error(e);
+      await load(); // Reload to get the actual error from backend
     } finally {
       setGenerating((s) => { const n = new Set(s); n.delete(clipId); return n; });
     }
