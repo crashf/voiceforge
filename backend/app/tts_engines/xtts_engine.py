@@ -70,18 +70,27 @@ class XTTSEngine(TTSEngine):
 
         def _run():
             if reference_audio and Path(reference_audio).exists():
-                # Voice cloning mode — convert to WAV if needed
-                ref_wav = _ensure_wav(Path(reference_audio))
+                ref_path = Path(reference_audio)
+                ref_dir = ref_path.parent
+
+                # Collect ALL wav samples in the voice directory for multi-reference
+                all_wavs = sorted(ref_dir.glob("sample_*_trimmed.wav"))
+                if not all_wavs:
+                    # Fallback: convert and trim the primary reference
+                    all_wavs = [_ensure_wav(ref_path)]
+
+                speaker_wav = [str(w) for w in all_wavs]
+                logger.info(f"Using {len(speaker_wav)} reference samples: {speaker_wav}")
+
                 tts.tts_to_file(
                     text=text,
                     file_path=str(output_path),
-                    speaker_wav=str(ref_wav),
+                    speaker_wav=speaker_wav,
                     language=language,
                     speed=speed,
                 )
             else:
                 # XTTS v2 requires speaker_wav — no "default" speaker without one.
-                # Use a simple fallback: generate without speaker (basic TTS).
                 tts.tts_to_file(
                     text=text,
                     file_path=str(output_path),
@@ -115,16 +124,22 @@ class XTTSEngine(TTSEngine):
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy samples to voice directory and convert to WAV
+        # Copy samples to voice directory, convert to WAV, and trim to 10s
         reference_paths = []
         for i, sample in enumerate(sample_paths):
             dest = output_dir / f"sample_{i}{Path(sample).suffix}"
             shutil.copy2(sample, dest)
             # Convert to WAV for XTTS compatibility
             wav_dest = _ensure_wav(dest)
-            reference_paths.append(wav_dest)
+            # Trim to 10 seconds (XTTS works best with 6-12s clips)
+            trimmed = output_dir / f"sample_{i}_trimmed.wav"
+            subprocess.run(
+                ["ffmpeg", "-y", "-i", str(wav_dest), "-t", "10", "-ar", "22050", "-ac", "1", str(trimmed)],
+                capture_output=True, check=True,
+            )
+            reference_paths.append(trimmed)
 
-        # Use the first (or longest) sample as primary reference
+        # Use the first sample as primary reference path
         primary = str(reference_paths[0])
 
         return VoiceCloneResult(
