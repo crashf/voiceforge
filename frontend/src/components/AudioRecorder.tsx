@@ -22,7 +22,7 @@ export default function AudioRecorder({ onRecordingComplete, label }: Props) {
   // Visualizer
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
-  const animRef = useRef<number>();
+  const animRef = useRef<number>(undefined);
 
   useEffect(() => {
     return () => {
