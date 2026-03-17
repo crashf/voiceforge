@@ -113,7 +113,7 @@ export default function ProjectView({ projectId }: Props) {
 
   const statusIcon = (status: string, errorMsg?: string | null) => {
     switch (status) {
-      case "done": return <CheckCircle size={14} style={{ color: "var(--success)" }} title="Generated successfully" />;
+      case "done": return <span title="Generated successfully"><CheckCircle size={14} style={{ color: "var(--success)" }} /></span>;
       case "error": return (
         <span title={errorMsg || "Generation failed"} className="cursor-help">
           <AlertCircle size={14} style={{ color: "var(--danger)" }} />
