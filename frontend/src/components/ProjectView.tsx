@@ -69,14 +69,22 @@ export default function ProjectView({ projectId }: Props) {
       };
     });
     try {
+      // Fire generate — may take 30-120s for XTTS on CPU
       await generateClip(projectId, clipId);
-      await load();
     } catch (e) {
-      console.error(e);
-      await load(); // Reload to get the actual error from backend
-    } finally {
-      setGenerating((s) => { const n = new Set(s); n.delete(clipId); return n; });
+      console.error("Generate call failed (may still be processing):", e);
     }
+    // Poll until the clip status is no longer "generating"
+    for (let i = 0; i < 60; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      try {
+        const freshProject = await getProject(projectId);
+        setProject(freshProject);
+        const updated = freshProject.clips.find((c: ClipInfo) => c.id === clipId);
+        if (updated && updated.status !== "generating") break;
+      } catch { /* keep polling */ }
+    }
+    setGenerating((s) => { const n = new Set(s); n.delete(clipId); return n; });
   };
 
   const handleGenerateAll = async () => {
