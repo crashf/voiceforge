@@ -128,6 +128,11 @@ class XTTSEngine(TTSEngine):
                     gpt_cond_latent=gpt_cond_latent,
                     speaker_embedding=speaker_embedding,
                     speed=speed,
+                    temperature=0.3,       # Lower = more faithful to reference voice
+                    length_penalty=1.0,
+                    repetition_penalty=5.0, # Higher = less repetition/artifacts
+                    top_k=30,              # Lower = more deterministic
+                    top_p=0.65,            # Lower = stays closer to reference
                 )
                 wav = torch.tensor(out["wav"]).unsqueeze(0)
                 torchaudio.save(str(output_path), wav, 24000)
