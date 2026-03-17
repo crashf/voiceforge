@@ -59,6 +59,11 @@ export const generateClip = (projectId: string, clipId: string) =>
   fetchJSON<ClipGenerateResult>(`/projects/${projectId}/clips/${clipId}/generate`, { method: "POST" });
 export const getClipAudioUrl = (projectId: string, clipId: string) =>
   `${BASE}/projects/${projectId}/clips/${clipId}/audio`;
+export const updateClip = (projectId: string, clipId: string, data: Partial<ClipCreateData>) =>
+  fetchJSON<{ id: string; title: string; status: string }>(`/projects/${projectId}/clips/${clipId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 export const deleteClip = (projectId: string, clipId: string) =>
   fetchJSON(`/projects/${projectId}/clips/${clipId}`, { method: "DELETE" });
 export const getProjectExportUrl = (projectId: string) =>

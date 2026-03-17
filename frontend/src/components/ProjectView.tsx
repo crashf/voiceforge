@@ -2,13 +2,13 @@
 
 import { useEffect, useState, useRef } from "react";
 import {
-  getProject, getVoices, createClip, generateClip, deleteClip,
+  getProject, getVoices, createClip, generateClip, updateClip, deleteClip,
   getClipAudioUrl, getProjectExportUrl,
   type ProjectDetail, type ClipInfo, type VoiceSummary,
 } from "@/lib/api";
 import {
   Play, Pause, Download, Trash2, Plus, Loader, CheckCircle,
-  AlertCircle, FileDown, RefreshCw,
+  AlertCircle, FileDown, RefreshCw, Pencil, Save, X,
 } from "lucide-react";
 
 interface Props {
@@ -26,6 +26,9 @@ export default function ProjectView({ projectId }: Props) {
   const [newSpeed, setNewSpeed] = useState(1.0);
   const [generating, setGenerating] = useState<Set<string>>(new Set());
   const [playingId, setPlayingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+  const [editTitle, setEditTitle] = useState("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const load = async () => {
@@ -93,6 +96,23 @@ export default function ProjectView({ projectId }: Props) {
     for (const clip of pending) {
       await handleGenerate(clip.id);
     }
+  };
+
+  const handleStartEdit = (clip: ClipInfo) => {
+    setEditingId(clip.id);
+    setEditTitle(clip.title);
+    setEditText(clip.text);
+  };
+
+  const handleSaveEdit = async (clipId: string) => {
+    if (!projectId) return;
+    await updateClip(projectId, clipId, { title: editTitle, text: editText });
+    setEditingId(null);
+    await load();
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
   };
 
   const handlePlay = (clip: ClipInfo) => {
@@ -300,10 +320,32 @@ export default function ProjectView({ projectId }: Props) {
 
             {/* Info */}
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm truncate">{clip.title}</div>
-              <div className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>
-                {clip.text.slice(0, 100)}{clip.text.length > 100 ? "..." : ""}
-              </div>
+              {editingId === clip.id ? (
+                <div className="space-y-1">
+                  <input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    className="w-full text-sm font-medium px-2 py-1 rounded border"
+                    style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    placeholder="Title"
+                  />
+                  <textarea
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                    rows={2}
+                    className="w-full text-xs px-2 py-1 rounded border resize-none"
+                    style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    placeholder="Text to speak..."
+                  />
+                </div>
+              ) : (
+                <>
+                  <div className="font-medium text-sm truncate">{clip.title}</div>
+                  <div className="text-xs truncate" style={{ color: "var(--text-secondary)" }}>
+                    {clip.text.slice(0, 100)}{clip.text.length > 100 ? "..." : ""}
+                  </div>
+                </>
+              )}
               {clip.status === "error" && clip.error_message && (
                 <div className="text-xs mt-1 flex items-center gap-1" style={{ color: "var(--danger)" }}>
                   <AlertCircle size={10} /> {clip.error_message}
@@ -323,27 +365,56 @@ export default function ProjectView({ projectId }: Props) {
 
             {/* Actions */}
             <div className="flex items-center gap-1">
-              {clip.status !== "done" && (
-                <button
-                  onClick={() => handleGenerate(clip.id)}
-                  disabled={generating.has(clip.id)}
-                  className="p-1.5 rounded hover:brightness-125 cursor-pointer disabled:opacity-50"
-                  style={{ color: "var(--success)" }}
-                  title="Generate"
-                >
-                  {generating.has(clip.id) ? <Loader size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-                </button>
-              )}
-              {clip.status === "done" && projectId && (
-                <a
-                  href={getClipAudioUrl(projectId, clip.id)}
-                  download={`${clip.title}.${clip.output_format}`}
-                  className="p-1.5 rounded hover:brightness-125 cursor-pointer"
-                  style={{ color: "var(--accent)" }}
-                  title="Download"
-                >
-                  <Download size={16} />
-                </a>
+              {editingId === clip.id ? (
+                <>
+                  <button
+                    onClick={() => handleSaveEdit(clip.id)}
+                    className="p-1.5 rounded hover:brightness-125 cursor-pointer"
+                    style={{ color: "var(--success)" }}
+                    title="Save changes"
+                  >
+                    <Save size={16} />
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="p-1.5 rounded hover:brightness-125 cursor-pointer"
+                    style={{ color: "var(--text-secondary)" }}
+                    title="Cancel"
+                  >
+                    <X size={16} />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={() => handleStartEdit(clip)}
+                    className="p-1.5 rounded hover:brightness-125 cursor-pointer"
+                    style={{ color: "var(--text-secondary)" }}
+                    title="Edit"
+                  >
+                    <Pencil size={16} />
+                  </button>
+                  <button
+                    onClick={() => handleGenerate(clip.id)}
+                    disabled={generating.has(clip.id)}
+                    className="p-1.5 rounded hover:brightness-125 cursor-pointer disabled:opacity-50"
+                    style={{ color: "var(--success)" }}
+                    title={clip.status === "done" ? "Regenerate" : "Generate"}
+                  >
+                    {generating.has(clip.id) ? <Loader size={16} className="animate-spin" /> : <RefreshCw size={16} />}
+                  </button>
+                  {clip.status === "done" && projectId && (
+                    <a
+                      href={getClipAudioUrl(projectId, clip.id)}
+                      download={`${clip.title}.${clip.output_format}`}
+                      className="p-1.5 rounded hover:brightness-125 cursor-pointer"
+                      style={{ color: "var(--accent)" }}
+                      title="Download"
+                    >
+                      <Download size={16} />
+                    </a>
+                  )}
+                </>
               )}
               <button
                 onClick={() => handleDeleteClip(clip.id)}

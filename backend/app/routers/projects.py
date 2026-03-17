@@ -170,6 +170,26 @@ async def create_clips_batch(project_id: str, data: BatchClipCreate, db: AsyncSe
     return {"created": len(clips), "clip_ids": [c.id for c in clips]}
 
 
+@router.patch("/{project_id}/clips/{clip_id}")
+async def update_clip(project_id: str, clip_id: str, data: dict, db: AsyncSession = Depends(get_db)):
+    """Update a clip's text, title, voice, speed, etc."""
+    clip = await db.get(Clip, clip_id)
+    if not clip or clip.project_id != project_id:
+        raise HTTPException(404, "Clip not found")
+
+    allowed = {"title", "text", "voice_id", "engine", "speed", "language", "output_format"}
+    for key, val in data.items():
+        if key in allowed:
+            setattr(clip, key, val)
+
+    # Reset status so user can re-generate
+    clip.status = "pending"
+    clip.error_message = None
+    await db.commit()
+    await db.refresh(clip)
+    return {"id": clip.id, "title": clip.title, "status": clip.status}
+
+
 @router.post("/{project_id}/clips/{clip_id}/generate")
 async def generate_clip(project_id: str, clip_id: str, db: AsyncSession = Depends(get_db)):
     """Generate audio for a clip using the configured TTS engine."""
