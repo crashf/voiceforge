@@ -80,14 +80,11 @@ class XTTSEngine(TTSEngine):
                     speed=speed,
                 )
             else:
-                # Use default speaker if available
-                speaker = None
-                if tts.speakers:
-                    speaker = tts.speakers[0]
+                # XTTS v2 requires speaker_wav — no "default" speaker without one.
+                # Use a simple fallback: generate without speaker (basic TTS).
                 tts.tts_to_file(
                     text=text,
                     file_path=str(output_path),
-                    speaker=speaker,
                     language=language,
                     speed=speed,
                 )
@@ -137,12 +134,8 @@ class XTTSEngine(TTSEngine):
         )
 
     async def list_voices(self) -> list[dict]:
-        tts = self._get_tts()
-        voices = []
-        if tts.speakers:
-            for s in tts.speakers:
-                voices.append({"id": s, "name": s, "engine": self.name})
-        return voices
+        # XTTS v2 is a zero-shot cloning model — no built-in speaker list
+        return []
 
     async def health_check(self) -> dict:
         try:
