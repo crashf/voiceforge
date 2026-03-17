@@ -88,8 +88,10 @@ export const createClipsBatch = (projectId: string, clips: ClipCreateData[]) =>
   });
 export const generateClip = (projectId: string, clipId: string) =>
   fetchJSON<ClipGenerateResult>(`/projects/${projectId}/clips/${clipId}/generate`, { method: "POST" });
-export const getClipAudioUrl = (projectId: string, clipId: string) =>
-  `${BASE}/projects/${projectId}/clips/${clipId}/audio`;
+export const getClipAudioUrl = (projectId: string, clipId: string) => {
+  const token = getToken();
+  return `${BASE}/projects/${projectId}/clips/${clipId}/audio${token ? `?token=${token}` : ""}`;
+};
 export const updateClip = (projectId: string, clipId: string, data: Partial<ClipCreateData>) =>
   fetchJSON<{ id: string; title: string; status: string }>(`/projects/${projectId}/clips/${clipId}`, {
     method: "PATCH",
@@ -97,8 +99,10 @@ export const updateClip = (projectId: string, clipId: string, data: Partial<Clip
   });
 export const deleteClip = (projectId: string, clipId: string) =>
   fetchJSON(`/projects/${projectId}/clips/${clipId}`, { method: "DELETE" });
-export const getProjectExportUrl = (projectId: string) =>
-  `${BASE}/projects/${projectId}/export`;
+export const getProjectExportUrl = (projectId: string) => {
+  const token = getToken();
+  return `${BASE}/projects/${projectId}/export${token ? `?token=${token}` : ""}`;
+};
 
 // ── Types ──
 export interface EngineInfo {

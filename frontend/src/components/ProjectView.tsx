@@ -29,6 +29,9 @@ export default function ProjectView({ projectId }: Props) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
   const [editTitle, setEditTitle] = useState("");
+  const [editVoiceId, setEditVoiceId] = useState("");
+  const [editEngine, setEditEngine] = useState("xtts");
+  const [editSpeed, setEditSpeed] = useState(1.0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const load = async () => {
@@ -102,11 +105,14 @@ export default function ProjectView({ projectId }: Props) {
     setEditingId(clip.id);
     setEditTitle(clip.title);
     setEditText(clip.text);
+    setEditVoiceId(clip.voice_id || "");
+    setEditEngine(clip.engine || "xtts");
+    setEditSpeed(clip.speed || 1.0);
   };
 
   const handleSaveEdit = async (clipId: string) => {
     if (!projectId) return;
-    await updateClip(projectId, clipId, { title: editTitle, text: editText });
+    await updateClip(projectId, clipId, { title: editTitle, text: editText, voice_id: editVoiceId || undefined, engine: editEngine, speed: editSpeed });
     setEditingId(null);
     await load();
   };
@@ -321,22 +327,56 @@ export default function ProjectView({ projectId }: Props) {
             {/* Info */}
             <div className="flex-1 min-w-0">
               {editingId === clip.id ? (
-                <div className="space-y-1">
+                <div className="space-y-2">
                   <input
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full text-sm font-medium px-2 py-1 rounded border"
+                    className="w-full text-sm font-medium px-2 py-1.5 rounded border"
                     style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     placeholder="Title"
                   />
                   <textarea
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
-                    rows={2}
-                    className="w-full text-xs px-2 py-1 rounded border resize-none"
+                    rows={3}
+                    className="w-full text-sm px-2 py-1.5 rounded border resize-y"
                     style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     placeholder="Text to speak..."
                   />
+                  <div className="grid grid-cols-3 gap-2">
+                    <select
+                      value={editVoiceId}
+                      onChange={(e) => setEditVoiceId(e.target.value)}
+                      className="px-2 py-1.5 rounded border text-xs outline-none"
+                      style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    >
+                      <option value="">Default Voice</option>
+                      {voices.map((v) => (
+                        <option key={v.id} value={v.id}>{v.name} ({v.engine})</option>
+                      ))}
+                    </select>
+                    <select
+                      value={editEngine}
+                      onChange={(e) => setEditEngine(e.target.value)}
+                      className="px-2 py-1.5 rounded border text-xs outline-none"
+                      style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    >
+                      <option value="xtts">XTTS v2 (Local)</option>
+                      <option value="minimax">MiniMax (Cloud)</option>
+                      <option value="openai">OpenAI TTS</option>
+                      <option value="ollama">Ollama</option>
+                    </select>
+                    <div className="flex items-center gap-1">
+                      <label className="text-xs" style={{ color: "var(--text-secondary)" }}>Speed</label>
+                      <input
+                        type="range" min={0.5} max={2.0} step={0.1}
+                        value={editSpeed}
+                        onChange={(e) => setEditSpeed(parseFloat(e.target.value))}
+                        className="flex-1"
+                      />
+                      <span className="text-xs w-7">{editSpeed}x</span>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <>

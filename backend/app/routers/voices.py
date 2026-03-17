@@ -157,11 +157,14 @@ async def clone_voice(
         )
         db.add(sample)
 
-    result = await engine.clone_voice(
-        name=voice.name,
-        sample_paths=sample_paths,
-        output_dir=voice_dir,
-    )
+    try:
+        result = await engine.clone_voice(
+            name=voice.name,
+            sample_paths=sample_paths,
+            output_dir=voice_dir,
+        )
+    except RuntimeError as e:
+        raise HTTPException(400, str(e))
 
     voice.is_cloned = True
     voice.embedding_path = str(result.embedding_path) if result.embedding_path else None

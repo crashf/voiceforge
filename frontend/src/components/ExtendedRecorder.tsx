@@ -90,7 +90,12 @@ export default function ExtendedRecorder({
   const startRecording = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        audio: { echoCancellation: true, noiseSuppression: true, sampleRate: 44100 },
+        audio: {
+          echoCancellation: false,
+          noiseSuppression: false,
+          autoGainControl: true,
+          sampleRate: 44100,
+        },
       });
       streamRef.current = stream;
       const audioCtx = new AudioContext();
@@ -116,6 +121,24 @@ export default function ExtendedRecorder({
         const blob = new Blob(chunks.current, { type: actualType });
         if (audioUrl.current) URL.revokeObjectURL(audioUrl.current);
         audioUrl.current = URL.createObjectURL(blob);
+
+        // Quick volume check — read a small chunk to verify audio isn't silent
+        const testAudio = new AudioContext();
+        blob.arrayBuffer().then((buf) => {
+          testAudio.decodeAudioData(buf).then((decoded) => {
+            const data = decoded.getChannelData(0);
+            let peak = 0;
+            for (let i = 0; i < data.length; i++) {
+              const abs = Math.abs(data[i]);
+              if (abs > peak) peak = abs;
+            }
+            if (peak < 0.01) {
+              alert("Warning: Recording appears to be silent. Your microphone may not be working properly. Try using Upload Files instead.");
+            }
+            testAudio.close();
+          }).catch(() => {});
+        });
+
         setState("recorded");
         stream.getTracks().forEach((t) => t.stop());
         if (animRef.current) cancelAnimationFrame(animRef.current);

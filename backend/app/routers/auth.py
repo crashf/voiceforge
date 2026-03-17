@@ -65,12 +65,15 @@ def decode_token(token: str) -> dict | None:
 
 
 async def get_current_user(request: Request, db: AsyncSession = Depends(get_db)) -> User:
-    """Extract and validate user from Authorization header."""
+    """Extract and validate user from Authorization header or ?token= query param."""
     auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
+    if auth.startswith("Bearer "):
+        token = auth[7:]
+    else:
+        # Fallback to query param (for audio/download URLs loaded by browser directly)
+        token = request.query_params.get("token", "")
+    if not token:
         raise HTTPException(401, "Not authenticated")
-
-    token = auth[7:]
     payload = decode_token(token)
     if not payload:
         raise HTTPException(401, "Invalid or expired token")

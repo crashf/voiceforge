@@ -170,9 +170,30 @@ class MiniMaxEngine(TTSEngine):
         sample = max(sample_paths, key=lambda p: p.stat().st_size)
 
         # Normalize audio to ensure proper levels
-        normalized = output_dir / "clone_upload.mp3"
         output_dir.mkdir(parents=True, exist_ok=True)
+        normalized = output_dir / "clone_upload.mp3"
         sample = self._normalize_audio(sample, normalized)
+
+        # Check volume — reject silent audio before wasting an API call
+        try:
+            vol_result = subprocess.run(
+                ["ffmpeg", "-i", str(sample), "-af", "volumedetect", "-f", "null", "/dev/null"],
+                capture_output=True, text=True, timeout=30,
+            )
+            for line in vol_result.stderr.split("\n"):
+                if "mean_volume" in line:
+                    vol = float(line.split("mean_volume:")[1].strip().split(" ")[0])
+                    if vol < -70:
+                        raise RuntimeError(
+                            f"Audio is too quiet (mean volume: {vol:.1f} dB). "
+                            "Your microphone may not be working. Try uploading an audio file instead."
+                        )
+                    logger.info(f"Audio volume check passed: {vol:.1f} dB")
+                    break
+        except RuntimeError:
+            raise
+        except Exception:
+            pass  # Don't block on volume check failure
 
         # Generate a unique voice_id (MiniMax requires alphanumeric + underscores)
         import time
