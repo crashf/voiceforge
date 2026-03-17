@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     openai_default_voice: str = "nova"
 
     # ElevenLabs
+    minimax_api_key: str = ""
     elevenlabs_api_key: str = ""
 
     # Ollama

@@ -4,8 +4,9 @@ import { useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import ProjectView from "@/components/ProjectView";
 import VoiceLab from "@/components/VoiceLab";
+import SettingsPage from "@/components/SettingsPage";
 
-type View = "projects" | "voicelab";
+type View = "projects" | "voicelab" | "settings";
 
 export default function Home() {
   const [view, setView] = useState<View>("projects");
@@ -25,6 +26,8 @@ export default function Home() {
       <main className="flex-1 overflow-auto">
         {view === "voicelab" ? (
           <VoiceLab />
+        ) : view === "settings" ? (
+          <SettingsPage />
         ) : (
           <ProjectView projectId={selectedProjectId} />
         )}

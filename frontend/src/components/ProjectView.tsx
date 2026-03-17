@@ -267,7 +267,7 @@ export default function ProjectView({ projectId }: Props) {
             >
               <option value="xtts">XTTS v2 (Local)</option>
               <option value="openai">OpenAI TTS</option>
-              <option value="elevenlabs">ElevenLabs</option>
+              <option value="minimax">MiniMax (Cloud)</option>
               <option value="ollama">Ollama</option>
             </select>
             <div className="flex items-center gap-2">

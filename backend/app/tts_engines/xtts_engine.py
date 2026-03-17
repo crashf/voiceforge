@@ -1,4 +1,4 @@
-"""XTTS v2 engine — local voice cloning and TTS using low-level API for better quality."""
+"""XTTS v2 engine — supports fine-tuned models for voice cloning and TTS."""
 
 import asyncio
 import logging
@@ -8,6 +8,8 @@ from pathlib import Path
 from .base import TTSEngine, TTSResult, VoiceCloneResult
 
 logger = logging.getLogger(__name__)
+
+FINETUNED_MODEL_DIR = Path("/opt/voiceforge/backend/models/wayne_finetuned")
 
 
 def _ensure_wav(audio_path: Path) -> Path:
@@ -34,10 +36,11 @@ class XTTSEngine(TTSEngine):
         self.model_name = model_name
         self.device = device
         self._tts = None
+        self._finetuned_loaded = False
         self._conditioning_cache: dict[str, tuple] = {}
 
     def _get_tts(self):
-        """Lazy-load the TTS model (heavy, only load once)."""
+        """Lazy-load the TTS model, then swap in fine-tuned weights if available."""
         if self._tts is None:
             import os
             import torch
@@ -47,11 +50,31 @@ class XTTSEngine(TTSEngine):
                 kwargs.setdefault("weights_only", False)
                 return _orig_load(*args, **kwargs)
             torch.load = _patched_load
+
             from TTS.api import TTS
             logger.info(f"Loading XTTS model on {self.device}...")
             self._tts = TTS(self.model_name).to(self.device)
+
+            # Load fine-tuned weights if available
+            ft_model_path = FINETUNED_MODEL_DIR / "model.pth"
+            if ft_model_path.exists() and not self._finetuned_loaded:
+                logger.info(f"Loading fine-tuned weights from {ft_model_path}...")
+                checkpoint = torch.load(str(ft_model_path), map_location=self.device, weights_only=False)
+                model_state = checkpoint.get("model", checkpoint)
+                # Strip "xtts." prefix from trainer checkpoint keys to match model
+                cleaned = {}
+                for k, v in model_state.items():
+                    clean_key = k.replace("xtts.", "", 1) if k.startswith("xtts.") else k
+                    cleaned[clean_key] = v
+                result = self._tts.synthesizer.tts_model.load_state_dict(cleaned, strict=False)
+                logger.info(f"Fine-tuned weights loaded: {len(cleaned)} keys, missing={len(result.missing_keys)}, unexpected={len(result.unexpected_keys)}")
+                self._finetuned_loaded = True
+                logger.info("Fine-tuned model loaded successfully!")
+            else:
+                logger.info("Using base XTTS v2 model (no fine-tuned weights found).")
+
             torch.load = _orig_load
-            logger.info("XTTS model loaded.")
+            logger.info("XTTS model ready.")
         return self._tts
 
     def _get_conditioning(self, voice_dir: Path):
@@ -74,9 +97,7 @@ class XTTSEngine(TTSEngine):
         tts = self._get_tts()
         model = tts.synthesizer.tts_model
 
-        # Find all WAV samples (prefer full-length for better conditioning)
         all_wavs = sorted(voice_dir.glob("sample_*.wav"))
-        # Exclude trimmed versions if full versions exist
         full_wavs = [w for w in all_wavs if "_trimmed" not in w.name]
         if not full_wavs:
             full_wavs = all_wavs
@@ -88,7 +109,6 @@ class XTTSEngine(TTSEngine):
 
         gpt_cond_latent, speaker_embedding = model.get_conditioning_latents(audio_path=sample_paths)
 
-        # Cache to disk and memory
         torch.save({"gpt_cond_latent": gpt_cond_latent, "speaker_embedding": speaker_embedding},
                    str(conditioning_path))
         self._conditioning_cache[cache_key] = (gpt_cond_latent, speaker_embedding)
@@ -117,27 +137,36 @@ class XTTSEngine(TTSEngine):
             if reference_audio and Path(reference_audio).exists():
                 ref_dir = Path(reference_audio).parent
 
-                # Use low-level API with pre-computed conditioning
+                # Invalidate old conditioning cache if we loaded a fine-tuned model
+                # (embeddings from base model won't match fine-tuned model)
+                if self._finetuned_loaded:
+                    cond_file = ref_dir / "conditioning.pt"
+                    cache_key = str(ref_dir)
+                    if cache_key in self._conditioning_cache:
+                        del self._conditioning_cache[cache_key]
+                    if cond_file.exists():
+                        cond_file.unlink()
+                        logger.info("Cleared old conditioning cache for fine-tuned model")
+
                 gpt_cond_latent, speaker_embedding = self._get_conditioning(ref_dir)
                 model = tts.synthesizer.tts_model
 
-                logger.info(f"Generating with cached conditioning for voice in {ref_dir}")
+                logger.info(f"Generating with {'fine-tuned' if self._finetuned_loaded else 'base'} model")
                 out = model.inference(
                     text=text,
                     language=language,
                     gpt_cond_latent=gpt_cond_latent,
                     speaker_embedding=speaker_embedding,
                     speed=speed,
-                    temperature=0.3,       # Lower = more faithful to reference voice
+                    temperature=0.3,
                     length_penalty=1.0,
-                    repetition_penalty=5.0, # Higher = less repetition/artifacts
-                    top_k=30,              # Lower = more deterministic
-                    top_p=0.65,            # Lower = stays closer to reference
+                    repetition_penalty=5.0,
+                    top_k=30,
+                    top_p=0.65,
                 )
                 wav = torch.tensor(out["wav"]).unsqueeze(0)
                 torchaudio.save(str(output_path), wav, 24000)
             else:
-                # No voice reference — use high-level API basic TTS
                 tts.tts_to_file(
                     text=text,
                     file_path=str(output_path),
@@ -165,19 +194,16 @@ class XTTSEngine(TTSEngine):
         output_dir: Path,
         **kwargs,
     ) -> VoiceCloneResult:
-        """Clone voice: convert samples to WAV, pre-compute conditioning latents."""
         import shutil
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Remove old conditioning cache
         old_cond = output_dir / "conditioning.pt"
         if old_cond.exists():
             old_cond.unlink()
         cache_key = str(output_dir)
         self._conditioning_cache.pop(cache_key, None)
 
-        # Copy and convert samples
         wav_paths = []
         for i, sample in enumerate(sample_paths):
             dest = output_dir / f"sample_{i}{Path(sample).suffix}"
@@ -185,7 +211,6 @@ class XTTSEngine(TTSEngine):
             wav_dest = _ensure_wav(dest)
             wav_paths.append(wav_dest)
 
-        # Pre-compute conditioning from all samples (runs on full audio for best quality)
         logger.info(f"Pre-computing conditioning for {name} from {len(wav_paths)} samples...")
         gpt_cond_latent, speaker_embedding = await asyncio.to_thread(
             self._compute_conditioning, wav_paths, output_dir
@@ -200,7 +225,6 @@ class XTTSEngine(TTSEngine):
         )
 
     def _compute_conditioning(self, wav_paths: list[Path], output_dir: Path):
-        """Synchronous helper to compute and save conditioning."""
         import torch
         tts = self._get_tts()
         model = tts.synthesizer.tts_model
@@ -219,6 +243,7 @@ class XTTSEngine(TTSEngine):
     async def health_check(self) -> dict:
         try:
             self._get_tts()
-            return {"engine": self.name, "status": "ready", "device": self.device}
+            ft_status = "fine-tuned" if self._finetuned_loaded else "base"
+            return {"engine": self.name, "status": "ready", "device": self.device, "model": ft_status}
         except Exception as e:
             return {"engine": self.name, "status": "error", "error": str(e)}
