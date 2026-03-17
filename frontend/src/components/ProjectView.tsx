@@ -286,34 +286,61 @@ export default function ProjectView({ projectId }: Props) {
             onChange={(e) => setNewText(e.target.value)}
             placeholder="Enter the script text to be spoken..."
             rows={4}
-            className="w-full px-3 py-2 rounded border text-sm outline-none mb-3 resize-y"
+            className="w-full px-3 py-2 rounded border text-sm outline-none mb-2 resize-y"
             style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
           />
-          <div className="grid grid-cols-4 gap-3 mb-3">
-            <select
-              value={newVoiceId}
-              onChange={(e) => setNewVoiceId(e.target.value)}
-              className="px-3 py-2 rounded border text-sm outline-none"
-              style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
-            >
-              <option value="">Default Voice</option>
-              {voices.map((v) => (
-                <option key={v.id} value={v.id}>{v.name} ({v.engine})</option>
-              ))}
-            </select>
-            <select
-              value={newEngine}
-              onChange={(e) => setNewEngine(e.target.value)}
-              className="px-3 py-2 rounded border text-sm outline-none"
-              style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
-            >
-              <option value="xtts">XTTS v2 (Local)</option>
-              <option value="openai">OpenAI TTS</option>
-              <option value="minimax">MiniMax (Cloud)</option>
-              <option value="ollama">Ollama</option>
-            </select>
+          <details className="mb-3">
+            <summary className="text-xs cursor-pointer" style={{ color: "var(--accent)" }}>
+              Text shortcuts (pause, interjections)
+            </summary>
+            <div className="mt-2 p-2 rounded text-xs grid grid-cols-2 gap-2" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
+              <div>
+                <strong style={{ color: "var(--text-primary)" }}>Pauses:</strong><br/>
+                &lt;#1.5#&gt; = 1.5s pause<br/>
+                &lt;#0.5#&gt; = 0.5s pause
+              </div>
+              <div>
+                <strong style={{ color: "var(--text-primary)" }}>Interjections:</strong><br/>
+                (laughs), (sighs), (coughs), (breath), (emm)<br/>
+                (clears-throat), (sniffs), (gasps)
+              </div>
+            </div>
+          </details>
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <label className="text-xs block mb-1" style={{ color: "var(--text-secondary)" }}>Voice</label>
+              <select
+                value={newVoiceId}
+                onChange={(e) => setNewVoiceId(e.target.value)}
+                className="w-full px-3 py-2 rounded border text-sm outline-none"
+                style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+              >
+                <option value="">Default Voice</option>
+                {voices.map((v) => (
+                  <option key={v.id} value={v.id}>{v.name} ({v.engine})</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: "var(--text-secondary)" }}>Engine</label>
+              <select
+                value={newEngine}
+                onChange={(e) => setNewEngine(e.target.value)}
+                className="w-full px-3 py-2 rounded border text-sm outline-none"
+                style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+              >
+                <option value="xtts">XTTS v2 (Local)</option>
+                <option value="openai">OpenAI TTS</option>
+                <option value="minimax">MiniMax (Cloud)</option>
+                <option value="ollama">Ollama</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Sliders row */}
+          <div className="grid grid-cols-3 gap-4 mb-3">
             <div className="flex items-center gap-2">
-              <label className="text-sm" style={{ color: "var(--text-secondary)" }}>Speed</label>
+              <label className="text-sm whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Speed</label>
               <input
                 type="range"
                 min={0.5}
@@ -323,10 +350,10 @@ export default function ProjectView({ projectId }: Props) {
                 onChange={(e) => setNewSpeed(parseFloat(e.target.value))}
                 className="flex-1"
               />
-              <span className="text-sm w-8">{newSpeed}x</span>
+              <span className="text-sm w-8 text-right">{newSpeed}x</span>
             </div>
             <div className="flex items-center gap-2">
-              <label className="text-sm" style={{ color: "var(--text-secondary)" }}>Vol</label>
+              <label className="text-sm whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Vol</label>
               <input
                 type="range"
                 min={0.1}
@@ -336,12 +363,10 @@ export default function ProjectView({ projectId }: Props) {
                 onChange={(e) => setNewVol(parseFloat(e.target.value))}
                 className="flex-1"
               />
-              <span className="text-sm w-8">{newVol.toFixed(1)}</span>
+              <span className="text-sm w-8 text-right">{newVol.toFixed(1)}</span>
             </div>
-          </div>
-          <div className="grid grid-cols-4 gap-3 mb-3">
             <div className="flex items-center gap-2">
-              <label className="text-sm" style={{ color: "var(--text-secondary)" }}>Pitch</label>
+              <label className="text-sm whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Pitch</label>
               <input
                 type="range"
                 min={-12}
@@ -351,36 +376,50 @@ export default function ProjectView({ projectId }: Props) {
                 onChange={(e) => setNewPitch(parseInt(e.target.value))}
                 className="flex-1"
               />
-              <span className="text-sm w-8">{newPitch}</span>
+              <span className="text-sm w-8 text-right">{newPitch}</span>
             </div>
-            <select
-              value={newSoundEffects}
-              onChange={(e) => setNewSoundEffects(e.target.value)}
-              className="px-3 py-2 rounded border text-sm outline-none"
-              style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
-            >
-              <option value="">No Effect</option>
-              <option value="spacious_echo">Spacious Echo</option>
-              <option value="radio">Radio</option>
-              <option value="phone">Phone</option>
-              <option value="演唱会">Concert Hall</option>
-              <option value="录音棚">Recording Studio</option>
-            </select>
-            <select
-              value={newLanguageBoost}
-              onChange={(e) => setNewLanguageBoost(e.target.value)}
-              className="px-3 py-2 rounded border text-sm outline-none"
-              style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
-            >
-              <option value="">Auto Lang</option>
-              <option value="English">English</option>
-              <option value="Chinese">Chinese</option>
-              <option value="Spanish">Spanish</option>
-              <option value="French">French</option>
-              <option value="German">German</option>
-              <option value="Japanese">Japanese</option>
-              <option value="Korean">Korean</option>
-            </select>
+          </div>
+          
+          {/* Second row of controls */}
+          <div className="grid grid-cols-2 gap-4 mb-3">
+            <div>
+              <label className="text-xs block mb-1" style={{ color: "var(--text-secondary)" }}>Sound Effects</label>
+              <select
+                value={newSoundEffects}
+                onChange={(e) => setNewSoundEffects(e.target.value)}
+                className="w-full px-3 py-2 rounded border text-sm outline-none"
+                style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+              >
+                <option value="">No Effect</option>
+                <option value="spacious_echo">Spacious Echo</option>
+                <option value="radio">Radio</option>
+                <option value="phone">Phone</option>
+                <option value="演唱会">Concert Hall</option>
+                <option value="录音棚">Recording Studio</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs block mb-1" style={{ color: "var(--text-secondary)" }}>Language Boost</label>
+              <select
+                value={newLanguageBoost}
+                onChange={(e) => setNewLanguageBoost(e.target.value)}
+                className="w-full px-3 py-2 rounded border text-sm outline-none"
+                style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+              >
+                <option value="">Auto Lang</option>
+                <option value="English">English</option>
+                <option value="Chinese">Chinese</option>
+                <option value="Spanish">Spanish</option>
+                <option value="French">French</option>
+                <option value="German">German</option>
+                <option value="Japanese">Japanese</option>
+                <option value="Korean">Korean</option>
+              </select>
+            </div>
+          </div>
+          
+          {/* Pronunciation and subtitles */}
+          <div className="flex items-center gap-4 mb-3">
             <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "var(--text-primary)" }}>
               <input
                 type="checkbox"
@@ -451,7 +490,16 @@ export default function ProjectView({ projectId }: Props) {
                     style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     placeholder="Text to speak..."
                   />
-                  <div className="grid grid-cols-4 gap-2">
+                  <details className="mb-2">
+                    <summary className="text-xs cursor-pointer" style={{ color: "var(--accent)" }}>
+                      Text shortcuts
+                    </summary>
+                    <div className="mt-1 p-1.5 rounded text-xs grid grid-cols-2 gap-1" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
+                      <div>&lt;#1.5#&gt; = pause</div>
+                      <div>(laughs), (sighs), (coughs)</div>
+                    </div>
+                  </details>
+                  <div className="grid grid-cols-2 gap-2 mb-2">
                     <select
                       value={editVoiceId}
                       onChange={(e) => setEditVoiceId(e.target.value)}
@@ -474,38 +522,40 @@ export default function ProjectView({ projectId }: Props) {
                       <option value="openai">OpenAI TTS</option>
                       <option value="ollama">Ollama</option>
                     </select>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
                     <div className="flex items-center gap-1">
-                      <label className="text-xs" style={{ color: "var(--text-secondary)" }}>Speed</label>
+                      <label className="text-xs whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Speed</label>
                       <input
                         type="range" min={0.5} max={2.0} step={0.1}
                         value={editSpeed}
                         onChange={(e) => setEditSpeed(parseFloat(e.target.value))}
                         className="flex-1"
                       />
-                      <span className="text-xs w-7">{editSpeed}x</span>
+                      <span className="text-xs w-6">{editSpeed}x</span>
                     </div>
                     <div className="flex items-center gap-1">
-                      <label className="text-xs" style={{ color: "var(--text-secondary)" }}>Vol</label>
+                      <label className="text-xs whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Vol</label>
                       <input
                         type="range" min={0.1} max={2.0} step={0.1}
                         value={editVol}
                         onChange={(e) => setEditVol(parseFloat(e.target.value))}
                         className="flex-1"
                       />
-                      <span className="text-xs w-7">{editVol.toFixed(1)}</span>
+                      <span className="text-xs w-6">{editVol.toFixed(1)}</span>
                     </div>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2 mt-2">
                     <div className="flex items-center gap-1">
-                      <label className="text-xs" style={{ color: "var(--text-secondary)" }}>Pitch</label>
+                      <label className="text-xs whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Pitch</label>
                       <input
                         type="range" min={-12} max={12} step={1}
                         value={editPitch}
                         onChange={(e) => setEditPitch(parseInt(e.target.value))}
                         className="flex-1"
                       />
-                      <span className="text-xs w-6">{editPitch}</span>
+                      <span className="text-xs w-5">{editPitch}</span>
                     </div>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 mb-2">
                     <select
                       value={editSoundEffects}
                       onChange={(e) => setEditSoundEffects(e.target.value)}
@@ -548,7 +598,7 @@ export default function ProjectView({ projectId }: Props) {
                     value={editPronunciation}
                     onChange={(e) => setEditPronunciation(e.target.value)}
                     placeholder="Pronunciation dict (e.g., API/a-p-i)"
-                    className="w-full px-2 py-1 rounded border text-xs outline-none mt-2"
+                    className="w-full px-2 py-1 rounded border text-xs outline-none"
                     style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                   />
                 </div>
