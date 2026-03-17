@@ -444,6 +444,13 @@ export default function ProjectView({ projectId }: Props) {
           >
             Add Clip
           </button>
+          <button
+            onClick={() => setShowAdd(false)}
+            className="px-4 py-2 rounded font-medium text-sm cursor-pointer ml-2"
+            style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+          >
+            Cancel
+          </button>
         </div>
       )}
 
@@ -474,37 +481,37 @@ export default function ProjectView({ projectId }: Props) {
             {/* Info */}
             <div className="flex-1 min-w-0">
               {editingId === clip.id ? (
-                <div className="space-y-2">
+                <div className="space-y-3 p-3 rounded-lg border" style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)" }}>
                   <input
                     value={editTitle}
                     onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full text-sm font-medium px-2 py-1.5 rounded border"
-                    style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    className="w-full text-sm font-medium px-3 py-2 rounded border"
+                    style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     placeholder="Title"
                   />
                   <textarea
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
-                    rows={3}
-                    className="w-full text-sm px-2 py-1.5 rounded border resize-y"
-                    style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    rows={4}
+                    className="w-full text-sm px-3 py-2 rounded border resize-y"
+                    style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     placeholder="Text to speak..."
                   />
-                  <details className="mb-2">
-                    <summary className="text-xs cursor-pointer" style={{ color: "var(--accent)" }}>
+                  <details>
+                    <summary className="text-sm cursor-pointer" style={{ color: "var(--accent)" }}>
                       Text shortcuts
                     </summary>
-                    <div className="mt-1 p-1.5 rounded text-xs grid grid-cols-2 gap-1" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
-                      <div>&lt;#1.5#&gt; = pause</div>
-                      <div>(laughs), (sighs), (coughs)</div>
+                    <div className="mt-2 p-2 rounded text-sm grid grid-cols-2 gap-2" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
+                      <div><strong style={{ color: "var(--text-primary)" }}>Pauses:</strong> &lt;#1.5#&gt; = 1.5s</div>
+                      <div><strong style={{ color: "var(--text-primary)" }}>Interjections:</strong> (laughs), (sighs)</div>
                     </div>
                   </details>
-                  <div className="grid grid-cols-2 gap-2 mb-2">
+                  <div className="grid grid-cols-2 gap-4">
                     <select
                       value={editVoiceId}
                       onChange={(e) => setEditVoiceId(e.target.value)}
-                      className="px-2 py-1.5 rounded border text-xs outline-none"
-                      style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                      className="px-3 py-2 rounded border text-sm outline-none"
+                      style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     >
                       <option value="">Default Voice</option>
                       {voices.map((v) => (
@@ -514,8 +521,8 @@ export default function ProjectView({ projectId }: Props) {
                     <select
                       value={editEngine}
                       onChange={(e) => setEditEngine(e.target.value)}
-                      className="px-2 py-1.5 rounded border text-xs outline-none"
-                      style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                      className="px-3 py-2 rounded border text-sm outline-none"
+                      style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     >
                       <option value="xtts">XTTS v2 (Local)</option>
                       <option value="minimax">MiniMax (Cloud)</option>
@@ -523,44 +530,44 @@ export default function ProjectView({ projectId }: Props) {
                       <option value="ollama">Ollama</option>
                     </select>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mb-2">
-                    <div className="flex items-center gap-1">
-                      <label className="text-xs whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Speed</label>
+                  <div className="grid grid-cols-3 gap-4">
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Speed</label>
                       <input
                         type="range" min={0.5} max={2.0} step={0.1}
                         value={editSpeed}
                         onChange={(e) => setEditSpeed(parseFloat(e.target.value))}
                         className="flex-1"
                       />
-                      <span className="text-xs w-6">{editSpeed}x</span>
+                      <span className="text-sm w-8">{editSpeed}x</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <label className="text-xs whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Vol</label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Vol</label>
                       <input
                         type="range" min={0.1} max={2.0} step={0.1}
                         value={editVol}
                         onChange={(e) => setEditVol(parseFloat(e.target.value))}
                         className="flex-1"
                       />
-                      <span className="text-xs w-6">{editVol.toFixed(1)}</span>
+                      <span className="text-sm w-8">{editVol.toFixed(1)}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <label className="text-xs whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Pitch</label>
+                    <div className="flex items-center gap-2">
+                      <label className="text-sm whitespace-nowrap" style={{ color: "var(--text-secondary)" }}>Pitch</label>
                       <input
                         type="range" min={-12} max={12} step={1}
                         value={editPitch}
                         onChange={(e) => setEditPitch(parseInt(e.target.value))}
                         className="flex-1"
                       />
-                      <span className="text-xs w-5">{editPitch}</span>
+                      <span className="text-sm w-8">{editPitch}</span>
                     </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 mb-2">
+                  <div className="grid grid-cols-2 gap-4">
                     <select
                       value={editSoundEffects}
                       onChange={(e) => setEditSoundEffects(e.target.value)}
-                      className="px-2 py-1 rounded border text-xs outline-none"
-                      style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                      className="px-3 py-2 rounded border text-sm outline-none"
+                      style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     >
                       <option value="">No Effect</option>
                       <option value="spacious_echo">Spacious Echo</option>
@@ -572,8 +579,8 @@ export default function ProjectView({ projectId }: Props) {
                     <select
                       value={editLanguageBoost}
                       onChange={(e) => setEditLanguageBoost(e.target.value)}
-                      className="px-2 py-1 rounded border text-xs outline-none"
-                      style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                      className="px-3 py-2 rounded border text-sm outline-none"
+                      style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     >
                       <option value="">Auto Lang</option>
                       <option value="English">English</option>
@@ -584,12 +591,14 @@ export default function ProjectView({ projectId }: Props) {
                       <option value="Japanese">Japanese</option>
                       <option value="Korean">Korean</option>
                     </select>
-                    <label className="flex items-center gap-1 text-xs cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "var(--text-primary)" }}>
                       <input
                         type="checkbox"
                         checked={editSubtitleEnable}
                         onChange={(e) => setEditSubtitleEnable(e.target.checked)}
-                        className="w-3 h-3"
+                        className="w-4 h-4"
                       />
                       Subtitles
                     </label>
@@ -598,9 +607,25 @@ export default function ProjectView({ projectId }: Props) {
                     value={editPronunciation}
                     onChange={(e) => setEditPronunciation(e.target.value)}
                     placeholder="Pronunciation dict (e.g., API/a-p-i)"
-                    className="w-full px-2 py-1 rounded border text-xs outline-none"
-                    style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    className="w-full px-3 py-2 rounded border text-sm outline-none"
+                    style={{ background: "var(--bg-secondary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                   />
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleSaveEdit(clip.id)}
+                      className="px-4 py-2 rounded font-medium text-sm cursor-pointer"
+                      style={{ background: "var(--success)", color: "#fff" }}
+                    >
+                      Save Changes
+                    </button>
+                    <button
+                      onClick={handleCancelEdit}
+                      className="px-4 py-2 rounded font-medium text-sm cursor-pointer"
+                      style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
                 </div>
               ) : (
                 <>
@@ -630,24 +655,7 @@ export default function ProjectView({ projectId }: Props) {
             {/* Actions */}
             <div className="flex items-center gap-1">
               {editingId === clip.id ? (
-                <>
-                  <button
-                    onClick={() => handleSaveEdit(clip.id)}
-                    className="p-1.5 rounded hover:brightness-125 cursor-pointer"
-                    style={{ color: "var(--success)" }}
-                    title="Save changes"
-                  >
-                    <Save size={16} />
-                  </button>
-                  <button
-                    onClick={handleCancelEdit}
-                    className="p-1.5 rounded hover:brightness-125 cursor-pointer"
-                    style={{ color: "var(--text-secondary)" }}
-                    title="Cancel"
-                  >
-                    <X size={16} />
-                  </button>
-                </>
+                null
               ) : (
                 <>
                   <button
