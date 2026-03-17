@@ -1,7 +1,15 @@
 "use client";
 
+import UserManagement from "./UserManagement";
 import { useEffect, useState } from "react";
-import { Settings as SettingsIcon, Eye, EyeOff, CheckCircle, AlertCircle, Loader2 } from "lucide-react";
+import { Settings as SettingsIcon, Eye, EyeOff, CheckCircle, AlertCircle, Loader2, Trash2 } from "lucide-react";
+
+interface IntegrationField {
+  key: string;
+  label: string;
+  type: string;
+  placeholder: string;
+}
 
 interface Integration {
   id: string;
@@ -9,10 +17,9 @@ interface Integration {
   description: string;
   configured: boolean;
   api_key_masked: string;
-  fields: { key: string; label: string; type: string; placeholder: string }[];
+  fields: IntegrationField[];
+  values_masked?: Record<string, string>;
 }
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "https://voiceforge.tech-method.com/api";
 
 export default function SettingsPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
@@ -24,7 +31,7 @@ export default function SettingsPage() {
 
   const load = async () => {
     try {
-      const res = await fetch(`${API_BASE}/settings/integrations`);
+      const res = await fetch("/api/settings/integrations");
       const data = await res.json();
       setIntegrations(data.integrations || []);
     } catch (e) {
@@ -34,17 +41,29 @@ export default function SettingsPage() {
 
   useEffect(() => { load(); }, []);
 
+  const startEdit = (integ: Integration) => {
+    setEditing(integ.id);
+    // Pre-fill non-password fields with their current values
+    const prefill: Record<string, string> = {};
+    integ.fields.forEach((f) => {
+      if (f.type !== "password" && integ.values_masked?.[f.key]) {
+        prefill[f.key] = integ.values_masked[f.key];
+      }
+    });
+    setValues(prefill);
+  };
+
   const handleSave = async (integrationId: string) => {
     setSaving(true);
     setStatus(null);
     try {
-      const res = await fetch(`${API_BASE}/settings/integrations/${integrationId}`, {
+      const res = await fetch(`/api/settings/integrations/${integrationId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(values),
       });
       if (res.ok) {
-        setStatus({ id: integrationId, type: "success", msg: "Saved! Restart backend to apply." });
+        setStatus({ id: integrationId, type: "success", msg: "Saved! Restart backend to apply changes." });
         setEditing(null);
         setValues({});
         await load();
@@ -59,10 +78,10 @@ export default function SettingsPage() {
   };
 
   const handleRemove = async (integrationId: string) => {
-    if (!confirm(`Remove ${integrationId} integration?`)) return;
+    if (!confirm(`Remove ${integrationId} configuration?`)) return;
     try {
-      await fetch(`${API_BASE}/settings/integrations/${integrationId}`, { method: "DELETE" });
-      setStatus({ id: integrationId, type: "success", msg: "Removed. Restart backend to apply." });
+      await fetch(`/api/settings/integrations/${integrationId}`, { method: "DELETE" });
+      setStatus({ id: integrationId, type: "success", msg: "Removed." });
       await load();
     } catch {
       setStatus({ id: integrationId, type: "error", msg: "Failed to remove" });
@@ -85,7 +104,7 @@ export default function SettingsPage() {
           <div
             key={integ.id}
             className="rounded-lg border p-5"
-            style={{ background: "var(--bg-secondary)", borderColor: "var(--border)" }}
+            style={{ background: "var(--bg-secondary)", borderColor: integ.configured ? "var(--success)" : "var(--border)" }}
           >
             <div className="flex items-center justify-between mb-2">
               <div>
@@ -95,42 +114,56 @@ export default function SettingsPage() {
                 </h3>
                 <p className="text-sm" style={{ color: "var(--text-secondary)" }}>{integ.description}</p>
               </div>
-              <div className="flex items-center gap-2">
-                {integ.configured && (
+              {integ.configured && editing !== integ.id && (
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => startEdit(integ)}
+                    className="text-xs px-3 py-1.5 rounded cursor-pointer"
+                    style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
+                  >
+                    Edit
+                  </button>
                   <button
                     onClick={() => handleRemove(integ.id)}
-                    className="text-xs px-2 py-1 rounded cursor-pointer"
+                    className="p-1.5 rounded cursor-pointer"
                     style={{ color: "var(--danger)" }}
+                    title="Remove integration"
                   >
-                    Remove
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {integ.configured && editing !== integ.id && (
-              <div className="flex items-center gap-3 mt-3">
-                <div className="flex items-center gap-2 px-3 py-2 rounded text-sm font-mono"
-                  style={{ background: "var(--bg-tertiary)" }}>
-                  {showKey[integ.id] ? integ.api_key_masked : "••••••••••••"}
-                  <button
-                    onClick={() => setShowKey((s) => ({ ...s, [integ.id]: !s[integ.id] }))}
-                    className="cursor-pointer"
-                    style={{ color: "var(--text-secondary)" }}
-                  >
-                    {showKey[integ.id] ? <EyeOff size={14} /> : <Eye size={14} />}
+                    <Trash2 size={14} />
                   </button>
                 </div>
-                <button
-                  onClick={() => { setEditing(integ.id); setValues({}); }}
-                  className="text-sm px-3 py-1.5 rounded cursor-pointer"
-                  style={{ background: "var(--bg-tertiary)", color: "var(--text-primary)" }}
-                >
-                  Update Key
-                </button>
+              )}
+            </div>
+
+            {/* Show current config summary when not editing */}
+            {integ.configured && editing !== integ.id && (
+              <div className="mt-3 space-y-1">
+                {integ.fields.map((field) => {
+                  const val = integ.values_masked?.[field.key] || "";
+                  if (!val) return null;
+                  const isSecret = field.type === "password";
+                  return (
+                    <div key={field.key} className="flex items-center gap-2 text-sm">
+                      <span style={{ color: "var(--text-secondary)" }}>{field.label}:</span>
+                      <span className="font-mono text-xs px-2 py-0.5 rounded" style={{ background: "var(--bg-tertiary)" }}>
+                        {isSecret ? (showKey[integ.id] ? val : "••••••••") : val}
+                      </span>
+                      {isSecret && (
+                        <button
+                          onClick={() => setShowKey((s) => ({ ...s, [integ.id]: !s[integ.id] }))}
+                          className="cursor-pointer"
+                          style={{ color: "var(--text-secondary)" }}
+                        >
+                          {showKey[integ.id] ? <EyeOff size={12} /> : <Eye size={12} />}
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
 
+            {/* Edit / Configure form */}
             {(!integ.configured || editing === integ.id) && (
               <div className="mt-3 space-y-3">
                 {integ.fields.map((field) => (
@@ -182,6 +215,8 @@ export default function SettingsPage() {
           </div>
         ))}
       </div>
+
+      <UserManagement />
     </div>
   );
 }

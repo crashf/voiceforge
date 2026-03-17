@@ -1,19 +1,43 @@
 /**
- * VoiceForge API client.
+ * VoiceForge API client — with auth token injection.
  */
 
 const BASE = "/api";
 
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("vf_token");
+}
+
 async function fetchJSON<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { "Content-Type": "application/json", ...init?.headers },
-    ...init,
-  });
+  const token = getToken();
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(init?.headers as Record<string, string>),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE}${path}`, { ...init, headers });
+  if (res.status === 401) {
+    // Token expired — clear and reload
+    localStorage.removeItem("vf_token");
+    window.location.reload();
+    throw new Error("Session expired");
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ detail: res.statusText }));
     throw new Error(err.detail || `API error ${res.status}`);
   }
   return res.json();
+}
+
+function authFetch(url: string, init?: RequestInit): Promise<Response> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    ...(init?.headers as Record<string, string>),
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return fetch(url, { ...init, headers });
 }
 
 // ── Engines ──
@@ -24,12 +48,19 @@ export const getEngineVoices = (name: string) => fetchJSON<VoiceOption[]>(`/engi
 // ── Voices ──
 export const getVoices = () => fetchJSON<VoiceSummary[]>("/voices");
 export const getVoice = (id: string) => fetchJSON<VoiceDetail>(`/voices/${id}`);
-export const createVoice = (data: FormData) =>
-  fetch(`${BASE}/voices`, { method: "POST", body: data }).then((r) => r.json());
+export const createVoice = (data: FormData) => {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return fetch(`${BASE}/voices`, { method: "POST", body: data, headers }).then((r) => r.json());
+};
 export const cloneVoice = (voiceId: string, samples: File[]) => {
   const fd = new FormData();
   samples.forEach((f) => fd.append("samples", f));
-  return fetch(`${BASE}/voices/${voiceId}/clone`, { method: "POST", body: fd }).then((r) => r.json());
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  return fetch(`${BASE}/voices/${voiceId}/clone`, { method: "POST", body: fd, headers }).then((r) => r.json());
 };
 export const deleteVoice = (id: string) =>
   fetchJSON(`/voices/${id}`, { method: "DELETE" });

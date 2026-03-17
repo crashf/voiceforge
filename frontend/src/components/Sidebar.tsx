@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { getProjects, createProject, type ProjectSummary } from "@/lib/api";
-import { Mic, FolderOpen, Plus, AudioLines, Settings } from "lucide-react";
+import { Mic, FolderOpen, Plus, AudioLines, Settings, LogOut, User } from "lucide-react";
+import { useAuth } from "./AuthContext";
 
 interface Props {
   view: "projects" | "voicelab" | "settings";
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export default function Sidebar({ view, onViewChange, selectedProjectId, onSelectProject }: Props) {
+  const { user, logout } = useAuth();
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [showNew, setShowNew] = useState(false);
   const [newName, setNewName] = useState("");
@@ -143,6 +145,26 @@ export default function Sidebar({ view, onViewChange, selectedProjectId, onSelec
         <Settings size={18} />
         Settings
       </button>
+
+      {/* User info + Logout */}
+      {user && (
+        <div className="px-4 py-3 border-t flex items-center justify-between" style={{ borderColor: "var(--border)" }}>
+          <div className="flex items-center gap-2 min-w-0">
+            <User size={16} style={{ color: "var(--text-secondary)" }} />
+            <span className="text-sm truncate" style={{ color: "var(--text-primary)" }}>
+              {user.display_name}
+            </span>
+          </div>
+          <button
+            onClick={logout}
+            className="p-1.5 rounded hover:brightness-125 cursor-pointer"
+            style={{ color: "var(--text-secondary)" }}
+            title="Sign out"
+          >
+            <LogOut size={16} />
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

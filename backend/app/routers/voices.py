@@ -1,4 +1,4 @@
-"""Voice management API — CRUD + cloning."""
+"""Voice management API — CRUD + cloning, scoped per user."""
 
 import shutil
 from pathlib import Path
@@ -6,20 +6,28 @@ from pathlib import Path
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from ..config import settings
 from ..database import get_db
 from ..models import Voice, VoiceSample
+from ..models.user import User
 from ..tts_engines import get_engine
+from .auth import get_current_user
 
 router = APIRouter(prefix="/voices", tags=["voices"])
 
 
 @router.get("")
-async def list_voices(db: AsyncSession = Depends(get_db)):
-    from sqlalchemy.orm import selectinload
+async def list_voices(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Voice).options(selectinload(Voice.samples)).order_by(Voice.created_at.desc())
+        select(Voice)
+        .options(selectinload(Voice.samples))
+        .where(Voice.user_id == user.id)
+        .order_by(Voice.created_at.desc())
     )
     voices = result.scalars().all()
     return [
@@ -39,10 +47,15 @@ async def list_voices(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{voice_id}")
-async def get_voice(voice_id: str, db: AsyncSession = Depends(get_db)):
-    from sqlalchemy.orm import selectinload
+async def get_voice(
+    voice_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Voice).options(selectinload(Voice.samples)).where(Voice.id == voice_id)
+        select(Voice)
+        .options(selectinload(Voice.samples))
+        .where(Voice.id == voice_id, Voice.user_id == user.id)
     )
     voice = result.scalar_one_or_none()
     if not voice:
@@ -77,6 +90,7 @@ async def create_voice(
     engine: str = Form("xtts"),
     language: str = Form("en"),
     provider_voice_id: str = Form(None),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     import uuid
@@ -89,6 +103,7 @@ async def create_voice(
         language=language,
         provider_voice_id=provider_voice_id,
         is_cloned=False,
+        user_id=user.id,
     )
     db.add(voice)
     await db.commit()
@@ -99,12 +114,14 @@ async def create_voice(
 async def clone_voice(
     voice_id: str,
     samples: list[UploadFile] = File(...),
+    user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
 ):
     """Upload audio samples and create a cloned voice."""
-    from sqlalchemy.orm import selectinload
     result = await db.execute(
-        select(Voice).options(selectinload(Voice.samples)).where(Voice.id == voice_id)
+        select(Voice)
+        .options(selectinload(Voice.samples))
+        .where(Voice.id == voice_id, Voice.user_id == user.id)
     )
     voice = result.scalar_one_or_none()
     if not voice:
@@ -114,7 +131,6 @@ async def clone_voice(
     if not engine.supports_cloning:
         raise HTTPException(400, f"Engine '{voice.engine}' does not support voice cloning.")
 
-    # Save uploaded samples
     voice_dir = settings.voices_dir / voice.id
     voice_dir.mkdir(parents=True, exist_ok=True)
 
@@ -125,7 +141,6 @@ async def clone_voice(
             shutil.copyfileobj(upload.file, f)
         sample_paths.append(dest)
 
-        # Get duration
         duration = None
         try:
             import soundfile as sf
@@ -142,7 +157,6 @@ async def clone_voice(
         )
         db.add(sample)
 
-    # Run cloning
     result = await engine.clone_voice(
         name=voice.name,
         sample_paths=sample_paths,
@@ -160,12 +174,18 @@ async def clone_voice(
 
 
 @router.delete("/{voice_id}")
-async def delete_voice(voice_id: str, db: AsyncSession = Depends(get_db)):
-    voice = await db.get(Voice, voice_id)
+async def delete_voice(
+    voice_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Voice).where(Voice.id == voice_id, Voice.user_id == user.id)
+    )
+    voice = result.scalar_one_or_none()
     if not voice:
         raise HTTPException(404, "Voice not found")
 
-    # Remove files
     voice_dir = settings.voices_dir / voice.id
     if voice_dir.exists():
         shutil.rmtree(voice_dir)

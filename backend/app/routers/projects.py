@@ -1,4 +1,4 @@
-"""Project management API — CRUD + clip generation."""
+"""Project management API — CRUD + clip generation, scoped per user."""
 
 import io
 import shutil
@@ -15,7 +15,9 @@ from sqlalchemy.orm import selectinload
 from ..config import settings
 from ..database import get_db
 from ..models import Project, Clip, Voice
+from ..models.user import User
 from ..tts_engines import get_engine
+from .auth import get_current_user
 
 router = APIRouter(prefix="/projects", tags=["projects"])
 
@@ -49,9 +51,15 @@ class BatchClipCreate(BaseModel):
 # ── Projects ──
 
 @router.get("")
-async def list_projects(db: AsyncSession = Depends(get_db)):
+async def list_projects(
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Project).options(selectinload(Project.clips)).order_by(Project.updated_at.desc())
+        select(Project)
+        .options(selectinload(Project.clips))
+        .where(Project.user_id == user.id)
+        .order_by(Project.updated_at.desc())
     )
     projects = result.scalars().all()
     return [
@@ -69,9 +77,15 @@ async def list_projects(db: AsyncSession = Depends(get_db)):
 
 
 @router.get("/{project_id}")
-async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
+async def get_project(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Project).options(selectinload(Project.clips)).where(Project.id == project_id)
+        select(Project)
+        .options(selectinload(Project.clips))
+        .where(Project.id == project_id, Project.user_id == user.id)
     )
     project = result.scalar_one_or_none()
     if not project:
@@ -105,8 +119,12 @@ async def get_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.post("")
-async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)):
-    project = Project(**data.model_dump())
+async def create_project(
+    data: ProjectCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    project = Project(**data.model_dump(), user_id=user.id)
     db.add(project)
     await db.commit()
     await db.refresh(project)
@@ -114,8 +132,16 @@ async def create_project(data: ProjectCreate, db: AsyncSession = Depends(get_db)
 
 
 @router.patch("/{project_id}")
-async def update_project(project_id: str, data: ProjectUpdate, db: AsyncSession = Depends(get_db)):
-    project = await db.get(Project, project_id)
+async def update_project(
+    project_id: str,
+    data: ProjectUpdate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Project).where(Project.id == project_id, Project.user_id == user.id)
+    )
+    project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(404, "Project not found")
     for key, val in data.model_dump(exclude_unset=True).items():
@@ -126,11 +152,17 @@ async def update_project(project_id: str, data: ProjectUpdate, db: AsyncSession 
 
 
 @router.delete("/{project_id}")
-async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
-    project = await db.get(Project, project_id)
+async def delete_project(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(Project).where(Project.id == project_id, Project.user_id == user.id)
+    )
+    project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(404, "Project not found")
-    # Remove project files
     project_dir = settings.projects_dir / project.id
     if project_dir.exists():
         shutil.rmtree(project_dir)
@@ -141,12 +173,24 @@ async def delete_project(project_id: str, db: AsyncSession = Depends(get_db)):
 
 # ── Clips ──
 
-@router.post("/{project_id}/clips")
-async def create_clip(project_id: str, data: ClipCreate, db: AsyncSession = Depends(get_db)):
-    project = await db.get(Project, project_id)
+async def _get_user_project(project_id: str, user: User, db: AsyncSession) -> Project:
+    result = await db.execute(
+        select(Project).where(Project.id == project_id, Project.user_id == user.id)
+    )
+    project = result.scalar_one_or_none()
     if not project:
         raise HTTPException(404, "Project not found")
+    return project
 
+
+@router.post("/{project_id}/clips")
+async def create_clip(
+    project_id: str,
+    data: ClipCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_user_project(project_id, user, db)
     clip = Clip(project_id=project_id, **data.model_dump())
     db.add(clip)
     await db.commit()
@@ -155,24 +199,31 @@ async def create_clip(project_id: str, data: ClipCreate, db: AsyncSession = Depe
 
 
 @router.post("/{project_id}/clips/batch")
-async def create_clips_batch(project_id: str, data: BatchClipCreate, db: AsyncSession = Depends(get_db)):
-    project = await db.get(Project, project_id)
-    if not project:
-        raise HTTPException(404, "Project not found")
-
+async def create_clips_batch(
+    project_id: str,
+    data: BatchClipCreate,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_user_project(project_id, user, db)
     clips = []
     for clip_data in data.clips:
         clip = Clip(project_id=project_id, **clip_data.model_dump())
         db.add(clip)
         clips.append(clip)
-
     await db.commit()
     return {"created": len(clips), "clip_ids": [c.id for c in clips]}
 
 
 @router.patch("/{project_id}/clips/{clip_id}")
-async def update_clip(project_id: str, clip_id: str, data: dict, db: AsyncSession = Depends(get_db)):
-    """Update a clip's text, title, voice, speed, etc."""
+async def update_clip(
+    project_id: str,
+    clip_id: str,
+    data: dict,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_user_project(project_id, user, db)
     clip = await db.get(Clip, clip_id)
     if not clip or clip.project_id != project_id:
         raise HTTPException(404, "Clip not found")
@@ -182,7 +233,6 @@ async def update_clip(project_id: str, clip_id: str, data: dict, db: AsyncSessio
         if key in allowed:
             setattr(clip, key, val)
 
-    # Reset status so user can re-generate
     clip.status = "pending"
     clip.error_message = None
     await db.commit()
@@ -191,8 +241,13 @@ async def update_clip(project_id: str, clip_id: str, data: dict, db: AsyncSessio
 
 
 @router.post("/{project_id}/clips/{clip_id}/generate")
-async def generate_clip(project_id: str, clip_id: str, db: AsyncSession = Depends(get_db)):
-    """Generate audio for a clip using the configured TTS engine."""
+async def generate_clip(
+    project_id: str,
+    clip_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_user_project(project_id, user, db)
     clip = await db.get(Clip, clip_id)
     if not clip or clip.project_id != project_id:
         raise HTTPException(404, "Clip not found")
@@ -201,19 +256,17 @@ async def generate_clip(project_id: str, clip_id: str, db: AsyncSession = Depend
     await db.commit()
 
     try:
-        # Determine engine: prefer voice's engine over clip's default
         engine_name = clip.engine
         reference_audio = None
         if clip.voice_id:
             voice = await db.get(Voice, clip.voice_id)
             if voice:
-                engine_name = voice.engine  # Use the voice's engine
+                engine_name = voice.engine
                 if voice.embedding_path:
                     reference_audio = Path(voice.embedding_path)
 
         engine = get_engine(engine_name)
 
-        # Output path
         project_dir = settings.projects_dir / project_id
         project_dir.mkdir(parents=True, exist_ok=True)
         output_path = project_dir / f"{clip.id}.{clip.output_format}"
@@ -250,7 +303,13 @@ async def generate_clip(project_id: str, clip_id: str, db: AsyncSession = Depend
 
 
 @router.get("/{project_id}/clips/{clip_id}/audio")
-async def download_clip_audio(project_id: str, clip_id: str, db: AsyncSession = Depends(get_db)):
+async def download_clip_audio(
+    project_id: str,
+    clip_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_user_project(project_id, user, db)
     clip = await db.get(Clip, clip_id)
     if not clip or clip.project_id != project_id:
         raise HTTPException(404, "Clip not found")
@@ -265,7 +324,13 @@ async def download_clip_audio(project_id: str, clip_id: str, db: AsyncSession = 
 
 
 @router.delete("/{project_id}/clips/{clip_id}")
-async def delete_clip(project_id: str, clip_id: str, db: AsyncSession = Depends(get_db)):
+async def delete_clip(
+    project_id: str,
+    clip_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_user_project(project_id, user, db)
     clip = await db.get(Clip, clip_id)
     if not clip or clip.project_id != project_id:
         raise HTTPException(404, "Clip not found")
@@ -277,10 +342,15 @@ async def delete_clip(project_id: str, clip_id: str, db: AsyncSession = Depends(
 
 
 @router.get("/{project_id}/export")
-async def export_project(project_id: str, db: AsyncSession = Depends(get_db)):
-    """Export all generated clips as a ZIP file."""
+async def export_project(
+    project_id: str,
+    user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Project).options(selectinload(Project.clips)).where(Project.id == project_id)
+        select(Project)
+        .options(selectinload(Project.clips))
+        .where(Project.id == project_id, Project.user_id == user.id)
     )
     project = result.scalar_one_or_none()
     if not project:

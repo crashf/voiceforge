@@ -11,7 +11,7 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import init_db
-from .routers import voices, projects, engines, settings as settings_router
+from .routers import voices, projects, engines, settings as settings_router, auth_router, admin_router
 from .tts_engines.registry import register_engine
 
 logger = logging.getLogger("voiceforge")
@@ -102,6 +102,8 @@ app.include_router(voices.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(engines.router, prefix="/api")
 app.include_router(settings_router.router, prefix="/api")
+app.include_router(auth_router.router, prefix="/api")
+app.include_router(admin_router.router, prefix="/api")
 
 
 @app.get("/api/health")
