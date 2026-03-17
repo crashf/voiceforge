@@ -291,19 +291,26 @@ export default function ProjectView({ projectId }: Props) {
           />
           <details className="mb-3">
             <summary className="text-xs cursor-pointer" style={{ color: "var(--accent)" }}>
-              Text shortcuts (pause, interjections)
+              Text shortcuts — click to expand
             </summary>
-            <div className="mt-2 p-2 rounded text-xs grid grid-cols-2 gap-2" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
-              <div>
-                <strong style={{ color: "var(--text-primary)" }}>Pauses:</strong><br/>
-                &lt;#1.5#&gt; = 1.5s pause<br/>
-                &lt;#0.5#&gt; = 0.5s pause
+            <div className="mt-2 p-3 rounded text-xs" style={{ background: "var(--bg-tertiary)", color: "var(--text-secondary)" }}>
+              <div className="grid grid-cols-2 gap-4 mb-2">
+                <div>
+                  <strong style={{ color: "var(--text-primary)" }}>Pauses</strong><br/>
+                  &lt;#0.5#&gt; = 0.5s pause<br/>
+                  &lt;#1#&gt; = 1s pause<br/>
+                  &lt;#2#&gt; = 2s pause<br/>
+                  (range: 0.01 - 99.99)
+                </div>
+                <div>
+                  <strong style={{ color: "var(--text-primary)" }}>Interjections</strong><br/>
+                  (laughs), (chuckle), (coughs), (clears-throat)<br/>
+                  (groans), (breath), (pant), (inhale), (exhale)<br/>
+                  (gasps), (sniffs), (sighs), (snorts), (burps)<br/>
+                  (lip-smacking), (humming), (hissing), (emm), (sneezes)
+                </div>
               </div>
-              <div>
-                <strong style={{ color: "var(--text-primary)" }}>Interjections:</strong><br/>
-                (laughs), (sighs), (coughs), (breath), (emm)<br/>
-                (clears-throat), (sniffs), (gasps)
-              </div>
+              <div style={{ color: "var(--text-primary)" }}>Example: Hello&amp;#123;#1#&amp;#125;(sighs), welcome to our service.</div>
             </div>
           </details>
           <div className="grid grid-cols-2 gap-4 mb-3">
@@ -499,11 +506,23 @@ export default function ProjectView({ projectId }: Props) {
                   />
                   <details>
                     <summary className="text-sm cursor-pointer" style={{ color: "var(--accent)" }}>
-                      Text shortcuts
+                      Text shortcuts — click to expand
                     </summary>
-                    <div className="mt-2 p-2 rounded text-sm grid grid-cols-2 gap-2" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
-                      <div><strong style={{ color: "var(--text-primary)" }}>Pauses:</strong> &lt;#1.5#&gt; = 1.5s</div>
-                      <div><strong style={{ color: "var(--text-primary)" }}>Interjections:</strong> (laughs), (sighs)</div>
+                    <div className="mt-2 p-3 rounded text-sm" style={{ background: "var(--bg-secondary)", color: "var(--text-secondary)" }}>
+                      <div className="grid grid-cols-2 gap-4 mb-2">
+                        <div>
+                          <strong style={{ color: "var(--text-primary)" }}>Pauses</strong><br/>
+                          &lt;#0.5#&gt; = 0.5s<br/>
+                          &lt;#1#&gt; = 1s<br/>
+                          &lt;#2#&gt; = 2s
+                        </div>
+                        <div>
+                          <strong style={{ color: "var(--text-primary)" }}>Interjections</strong><br/>
+                          (laughs), (sighs), (coughs), (breath)<br/>
+                          (clears-throat), (sniffs), (gasps), (emm)
+                        </div>
+                      </div>
+                      <div style={{ color: "var(--text-primary)" }}>Example: Hello&amp;#123;#1#&amp;#125;(sighs), welcome!</div>
                     </div>
                   </details>
                   <div className="grid grid-cols-2 gap-4">
