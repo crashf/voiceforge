@@ -14,7 +14,7 @@ export default function AudioRecorder({ onRecordingComplete, label }: Props) {
   const [playing, setPlaying] = useState(false);
   const mediaRecorder = useRef<MediaRecorder | null>(null);
   const chunks = useRef<Blob[]>([]);
-  const timerRef = useRef<ReturnType<typeof setInterval>>();
+  const timerRef = useRef<ReturnType<typeof setInterval>>(undefined);
   const audioUrl = useRef<string | null>(null);
   const audioEl = useRef<HTMLAudioElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
