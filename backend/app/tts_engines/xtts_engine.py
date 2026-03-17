@@ -23,10 +23,18 @@ class XTTSEngine(TTSEngine):
         """Lazy-load the TTS model (heavy, only load once)."""
         if self._tts is None:
             import os
+            import torch
             os.environ["COQUI_TOS_AGREED"] = "1"
+            # PyTorch 2.6+ defaults weights_only=True which breaks XTTS model loading
+            _orig_load = torch.load
+            def _patched_load(*args, **kwargs):
+                kwargs.setdefault("weights_only", False)
+                return _orig_load(*args, **kwargs)
+            torch.load = _patched_load
             from TTS.api import TTS
             logger.info(f"Loading XTTS model on {self.device}...")
             self._tts = TTS(self.model_name).to(self.device)
+            torch.load = _orig_load  # restore original
             logger.info("XTTS model loaded.")
         return self._tts
 
