@@ -2,11 +2,27 @@
 
 import asyncio
 import logging
+import subprocess
 from pathlib import Path
 
 from .base import TTSEngine, TTSResult, VoiceCloneResult
 
 logger = logging.getLogger(__name__)
+
+
+def _ensure_wav(audio_path: Path) -> Path:
+    """Convert audio to 22050Hz mono WAV if not already WAV. Returns path to WAV file."""
+    if audio_path.suffix.lower() == ".wav":
+        return audio_path
+    wav_path = audio_path.with_suffix(".wav")
+    if wav_path.exists():
+        return wav_path
+    logger.info(f"Converting {audio_path} to WAV for XTTS...")
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", str(audio_path), "-ar", "22050", "-ac", "1", str(wav_path)],
+        capture_output=True, check=True,
+    )
+    return wav_path
 
 
 class XTTSEngine(TTSEngine):
@@ -54,11 +70,12 @@ class XTTSEngine(TTSEngine):
 
         def _run():
             if reference_audio and Path(reference_audio).exists():
-                # Voice cloning mode — use reference audio
+                # Voice cloning mode — convert to WAV if needed
+                ref_wav = _ensure_wav(Path(reference_audio))
                 tts.tts_to_file(
                     text=text,
                     file_path=str(output_path),
-                    speaker_wav=str(reference_audio),
+                    speaker_wav=str(ref_wav),
                     language=language,
                     speed=speed,
                 )
@@ -101,12 +118,14 @@ class XTTSEngine(TTSEngine):
 
         output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Copy samples to voice directory
+        # Copy samples to voice directory and convert to WAV
         reference_paths = []
         for i, sample in enumerate(sample_paths):
             dest = output_dir / f"sample_{i}{Path(sample).suffix}"
             shutil.copy2(sample, dest)
-            reference_paths.append(dest)
+            # Convert to WAV for XTTS compatibility
+            wav_dest = _ensure_wav(dest)
+            reference_paths.append(wav_dest)
 
         # Use the first (or longest) sample as primary reference
         primary = str(reference_paths[0])
