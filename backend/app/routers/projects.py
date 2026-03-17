@@ -40,6 +40,12 @@ class ClipCreate(BaseModel):
     voice_id: str | None = None
     engine: str = "xtts"
     speed: float = 1.0
+    vol: float = 1.0
+    pitch: float = 0.0
+    sound_effects: str | None = None
+    pronunciation_dict: str | None = None
+    language_boost: str | None = None
+    subtitle_enable: bool = False
     output_format: str = "wav"
     language: str = "en"
 
@@ -106,6 +112,12 @@ async def get_project(
                 "voice_id": c.voice_id,
                 "engine": c.engine,
                 "speed": c.speed,
+                "vol": c.vol,
+                "pitch": c.pitch,
+                "sound_effects": c.sound_effects,
+                "pronunciation_dict": c.pronunciation_dict,
+                "language_boost": c.language_boost,
+                "subtitle_enable": bool(c.subtitle_enable),
                 "status": c.status,
                 "duration_seconds": c.duration_seconds,
                 "file_size_bytes": c.file_size_bytes,
@@ -277,6 +289,12 @@ async def generate_clip(
             voice_id=clip.voice_id,
             reference_audio=reference_audio,
             speed=clip.speed,
+            vol=clip.vol,
+            pitch=clip.pitch,
+            sound_effects=clip.sound_effects,
+            pronunciation_dict=clip.pronunciation_dict,
+            language_boost=clip.language_boost,
+            subtitle_enable=bool(clip.subtitle_enable),
             output_format=clip.output_format,
         )
 

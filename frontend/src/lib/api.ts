@@ -156,6 +156,12 @@ export interface ClipInfo {
   voice_id: string | null;
   engine: string;
   speed: number;
+  vol: number;
+  pitch: number;
+  sound_effects: string | null;
+  pronunciation_dict: string | null;
+  language_boost: string | null;
+  subtitle_enable: boolean;
   status: string;
   duration_seconds: number | null;
   file_size_bytes: number | null;
@@ -170,6 +176,12 @@ export interface ClipCreateData {
   voice_id?: string;
   engine?: string;
   speed?: number;
+  vol?: number;
+  pitch?: number;
+  sound_effects?: string;
+  pronunciation_dict?: string;
+  language_boost?: string;
+  subtitle_enable?: boolean;
   output_format?: string;
   language?: string;
 }

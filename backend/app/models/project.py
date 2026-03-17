@@ -40,7 +40,12 @@ class Clip(Base):
     # Generation settings
     language: Mapped[str] = mapped_column(String(10), default="en")
     speed: Mapped[float] = mapped_column(Float, default=1.0)
-    pitch: Mapped[float] = mapped_column(Float, default=1.0)
+    pitch: Mapped[float] = mapped_column(Float, default=0.0)
+    vol: Mapped[float] = mapped_column(Float, default=1.0)
+    sound_effects: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pronunciation_dict: Mapped[str | None] = mapped_column(Text, nullable=True)
+    language_boost: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    subtitle_enable: Mapped[bool] = mapped_column(Integer, default=0)
     output_format: Mapped[str] = mapped_column(String(10), default="wav")
 
     # Result

@@ -24,6 +24,12 @@ export default function ProjectView({ projectId }: Props) {
   const [newVoiceId, setNewVoiceId] = useState("");
   const [newEngine, setNewEngine] = useState("xtts");
   const [newSpeed, setNewSpeed] = useState(1.0);
+  const [newVol, setNewVol] = useState(1.0);
+  const [newPitch, setNewPitch] = useState(0);
+  const [newSoundEffects, setNewSoundEffects] = useState("");
+  const [newPronunciation, setNewPronunciation] = useState("");
+  const [newLanguageBoost, setNewLanguageBoost] = useState("");
+  const [newSubtitleEnable, setNewSubtitleEnable] = useState(false);
   const [generating, setGenerating] = useState<Set<string>>(new Set());
   const [playingId, setPlayingId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -32,6 +38,12 @@ export default function ProjectView({ projectId }: Props) {
   const [editVoiceId, setEditVoiceId] = useState("");
   const [editEngine, setEditEngine] = useState("xtts");
   const [editSpeed, setEditSpeed] = useState(1.0);
+  const [editVol, setEditVol] = useState(1.0);
+  const [editPitch, setEditPitch] = useState(0);
+  const [editSoundEffects, setEditSoundEffects] = useState("");
+  const [editPronunciation, setEditPronunciation] = useState("");
+  const [editLanguageBoost, setEditLanguageBoost] = useState("");
+  const [editSubtitleEnable, setEditSubtitleEnable] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const load = async () => {
@@ -54,6 +66,12 @@ export default function ProjectView({ projectId }: Props) {
       voice_id: newVoiceId || undefined,
       engine: newEngine,
       speed: newSpeed,
+      vol: newVol,
+      pitch: newPitch,
+      sound_effects: newSoundEffects || undefined,
+      pronunciation_dict: newPronunciation || undefined,
+      language_boost: newLanguageBoost || undefined,
+      subtitle_enable: newSubtitleEnable,
     });
     setNewTitle("");
     setNewText("");
@@ -108,11 +126,29 @@ export default function ProjectView({ projectId }: Props) {
     setEditVoiceId(clip.voice_id || "");
     setEditEngine(clip.engine || "xtts");
     setEditSpeed(clip.speed || 1.0);
+    setEditVol((clip as any).vol || 1.0);
+    setEditPitch((clip as any).pitch || 0);
+    setEditSoundEffects((clip as any).sound_effects || "");
+    setEditPronunciation((clip as any).pronunciation_dict || "");
+    setEditLanguageBoost((clip as any).language_boost || "");
+    setEditSubtitleEnable((clip as any).subtitle_enable || false);
   };
 
   const handleSaveEdit = async (clipId: string) => {
     if (!projectId) return;
-    await updateClip(projectId, clipId, { title: editTitle, text: editText, voice_id: editVoiceId || undefined, engine: editEngine, speed: editSpeed });
+    await updateClip(projectId, clipId, { 
+      title: editTitle, 
+      text: editText, 
+      voice_id: editVoiceId || undefined, 
+      engine: editEngine, 
+      speed: editSpeed,
+      vol: editVol,
+      pitch: editPitch,
+      sound_effects: editSoundEffects || undefined,
+      pronunciation_dict: editPronunciation || undefined,
+      language_boost: editLanguageBoost || undefined,
+      subtitle_enable: editSubtitleEnable,
+    });
     setEditingId(null);
     await load();
   };
@@ -253,7 +289,7 @@ export default function ProjectView({ projectId }: Props) {
             className="w-full px-3 py-2 rounded border text-sm outline-none mb-3 resize-y"
             style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
           />
-          <div className="grid grid-cols-3 gap-3 mb-3">
+          <div className="grid grid-cols-4 gap-3 mb-3">
             <select
               value={newVoiceId}
               onChange={(e) => setNewVoiceId(e.target.value)}
@@ -289,7 +325,79 @@ export default function ProjectView({ projectId }: Props) {
               />
               <span className="text-sm w-8">{newSpeed}x</span>
             </div>
+            <div className="flex items-center gap-2">
+              <label className="text-sm" style={{ color: "var(--text-secondary)" }}>Vol</label>
+              <input
+                type="range"
+                min={0.1}
+                max={2.0}
+                step={0.1}
+                value={newVol}
+                onChange={(e) => setNewVol(parseFloat(e.target.value))}
+                className="flex-1"
+              />
+              <span className="text-sm w-8">{newVol.toFixed(1)}</span>
+            </div>
           </div>
+          <div className="grid grid-cols-4 gap-3 mb-3">
+            <div className="flex items-center gap-2">
+              <label className="text-sm" style={{ color: "var(--text-secondary)" }}>Pitch</label>
+              <input
+                type="range"
+                min={-12}
+                max={12}
+                step={1}
+                value={newPitch}
+                onChange={(e) => setNewPitch(parseInt(e.target.value))}
+                className="flex-1"
+              />
+              <span className="text-sm w-8">{newPitch}</span>
+            </div>
+            <select
+              value={newSoundEffects}
+              onChange={(e) => setNewSoundEffects(e.target.value)}
+              className="px-3 py-2 rounded border text-sm outline-none"
+              style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+            >
+              <option value="">No Effect</option>
+              <option value="spacious_echo">Spacious Echo</option>
+              <option value="radio">Radio</option>
+              <option value="phone">Phone</option>
+              <option value="演唱会">Concert Hall</option>
+              <option value="录音棚">Recording Studio</option>
+            </select>
+            <select
+              value={newLanguageBoost}
+              onChange={(e) => setNewLanguageBoost(e.target.value)}
+              className="px-3 py-2 rounded border text-sm outline-none"
+              style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+            >
+              <option value="">Auto Lang</option>
+              <option value="English">English</option>
+              <option value="Chinese">Chinese</option>
+              <option value="Spanish">Spanish</option>
+              <option value="French">French</option>
+              <option value="German">German</option>
+              <option value="Japanese">Japanese</option>
+              <option value="Korean">Korean</option>
+            </select>
+            <label className="flex items-center gap-2 text-sm cursor-pointer" style={{ color: "var(--text-primary)" }}>
+              <input
+                type="checkbox"
+                checked={newSubtitleEnable}
+                onChange={(e) => setNewSubtitleEnable(e.target.checked)}
+                className="w-4 h-4"
+              />
+              Subtitles
+            </label>
+          </div>
+          <input
+            value={newPronunciation}
+            onChange={(e) => setNewPronunciation(e.target.value)}
+            placeholder="Pronunciation dict (e.g., API/a-p-i,hello/həˈloʊ)"
+            className="w-full px-3 py-2 rounded border text-sm outline-none mb-3"
+            style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+          />
           <button
             onClick={handleAddClip}
             className="px-4 py-2 rounded font-medium text-sm cursor-pointer"
@@ -343,7 +451,7 @@ export default function ProjectView({ projectId }: Props) {
                     style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
                     placeholder="Text to speak..."
                   />
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-4 gap-2">
                     <select
                       value={editVoiceId}
                       onChange={(e) => setEditVoiceId(e.target.value)}
@@ -376,7 +484,73 @@ export default function ProjectView({ projectId }: Props) {
                       />
                       <span className="text-xs w-7">{editSpeed}x</span>
                     </div>
+                    <div className="flex items-center gap-1">
+                      <label className="text-xs" style={{ color: "var(--text-secondary)" }}>Vol</label>
+                      <input
+                        type="range" min={0.1} max={2.0} step={0.1}
+                        value={editVol}
+                        onChange={(e) => setEditVol(parseFloat(e.target.value))}
+                        className="flex-1"
+                      />
+                      <span className="text-xs w-7">{editVol.toFixed(1)}</span>
+                    </div>
                   </div>
+                  <div className="grid grid-cols-4 gap-2 mt-2">
+                    <div className="flex items-center gap-1">
+                      <label className="text-xs" style={{ color: "var(--text-secondary)" }}>Pitch</label>
+                      <input
+                        type="range" min={-12} max={12} step={1}
+                        value={editPitch}
+                        onChange={(e) => setEditPitch(parseInt(e.target.value))}
+                        className="flex-1"
+                      />
+                      <span className="text-xs w-6">{editPitch}</span>
+                    </div>
+                    <select
+                      value={editSoundEffects}
+                      onChange={(e) => setEditSoundEffects(e.target.value)}
+                      className="px-2 py-1 rounded border text-xs outline-none"
+                      style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    >
+                      <option value="">No Effect</option>
+                      <option value="spacious_echo">Spacious Echo</option>
+                      <option value="radio">Radio</option>
+                      <option value="phone">Phone</option>
+                      <option value="演唱会">Concert Hall</option>
+                      <option value="录音棚">Recording Studio</option>
+                    </select>
+                    <select
+                      value={editLanguageBoost}
+                      onChange={(e) => setEditLanguageBoost(e.target.value)}
+                      className="px-2 py-1 rounded border text-xs outline-none"
+                      style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                    >
+                      <option value="">Auto Lang</option>
+                      <option value="English">English</option>
+                      <option value="Chinese">Chinese</option>
+                      <option value="Spanish">Spanish</option>
+                      <option value="French">French</option>
+                      <option value="German">German</option>
+                      <option value="Japanese">Japanese</option>
+                      <option value="Korean">Korean</option>
+                    </select>
+                    <label className="flex items-center gap-1 text-xs cursor-pointer" style={{ color: "var(--text-primary)" }}>
+                      <input
+                        type="checkbox"
+                        checked={editSubtitleEnable}
+                        onChange={(e) => setEditSubtitleEnable(e.target.checked)}
+                        className="w-3 h-3"
+                      />
+                      Subtitles
+                    </label>
+                  </div>
+                  <input
+                    value={editPronunciation}
+                    onChange={(e) => setEditPronunciation(e.target.value)}
+                    placeholder="Pronunciation dict (e.g., API/a-p-i)"
+                    className="w-full px-2 py-1 rounded border text-xs outline-none mt-2"
+                    style={{ background: "var(--bg-tertiary)", borderColor: "var(--border)", color: "var(--text-primary)" }}
+                  />
                 </div>
               ) : (
                 <>
