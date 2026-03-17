@@ -1,0 +1,31 @@
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - voiceforge-data:/app/data
+    environment:
+      - VF_DATABASE_URL=sqlite+aiosqlite:///./data/voiceforge.db
+      - VF_XTTS_DEVICE=cpu
+      - VF_DEFAULT_TTS_ENGINE=xtts
+      # Uncomment and fill to enable cloud engines:
+      # - VF_OPENAI_API_KEY=sk-...
+      # - VF_ELEVENLABS_API_KEY=...
+      # - VF_OLLAMA_BASE_URL=http://host.docker.internal:11434
+      # - VF_OLLAMA_TTS_MODEL=outetts
+      - VF_CORS_ORIGINS=["http://localhost:3000","http://localhost:8000"]
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  voiceforge-data:
