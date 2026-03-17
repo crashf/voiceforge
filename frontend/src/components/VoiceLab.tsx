@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { getVoices, getVoice, createVoice, cloneVoice, deleteVoice, type VoiceSummary, type VoiceDetail } from "@/lib/api";
 import { Mic, Upload, Trash2, Plus, CheckCircle, AlertCircle } from "lucide-react";
 import AudioRecorder from "./AudioRecorder";
+import ExtendedRecorder from "./ExtendedRecorder";
 import VoiceCloneGuide, { GUIDED_PROMPTS, type GuidedPrompt } from "./VoiceCloneGuide";
 
 export default function VoiceLab() {
@@ -23,7 +24,7 @@ export default function VoiceLab() {
   // Guided recording state
   const [activePrompt, setActivePrompt] = useState<GuidedPrompt | null>(null);
   const [completedPromptIds, setCompletedPromptIds] = useState<Set<string>>(new Set());
-  const [inputMode, setInputMode] = useState<"record" | "upload">("record");
+  const [inputMode, setInputMode] = useState<"record" | "extended" | "upload">("extended");
 
   const load = () => getVoices().then(setVoices).catch(console.error);
   useEffect(() => { load(); }, []);
@@ -136,7 +137,7 @@ export default function VoiceLab() {
             >
               <option value="xtts">XTTS v2 (Local — Free)</option>
               <option value="openai">OpenAI TTS</option>
-              <option value="elevenlabs">ElevenLabs</option>
+              <option value="minimax">MiniMax (Cloud)</option>
               <option value="ollama">Ollama</option>
             </select>
           </div>
@@ -247,6 +248,16 @@ export default function VoiceLab() {
                 {/* Input mode toggle */}
                 <div className="flex items-center gap-2 mb-4">
                   <button
+                    onClick={() => setInputMode("extended")}
+                    className="px-3 py-1.5 rounded text-sm font-medium cursor-pointer transition-colors"
+                    style={{
+                      background: inputMode === "extended" ? "var(--accent)" : "var(--bg-tertiary)",
+                      color: inputMode === "extended" ? "#fff" : "var(--text-secondary)",
+                    }}
+                  >
+                    🎙️ Extended Recording
+                  </button>
+                  <button
                     onClick={() => setInputMode("record")}
                     className="px-3 py-1.5 rounded text-sm font-medium cursor-pointer transition-colors"
                     style={{
@@ -254,7 +265,7 @@ export default function VoiceLab() {
                       color: inputMode === "record" ? "#fff" : "var(--text-secondary)",
                     }}
                   >
-                    🎙️ Record in Browser
+                    📋 Guided Prompts
                   </button>
                   <button
                     onClick={() => setInputMode("upload")}
@@ -268,7 +279,14 @@ export default function VoiceLab() {
                   </button>
                 </div>
 
-                {inputMode === "record" ? (
+                {inputMode === "extended" ? (
+                  <ExtendedRecorder
+                    onRecordingComplete={handleRecordingComplete}
+                    label="Record Extended Voice Sample"
+                    minSeconds={120}
+                    maxSeconds={300}
+                  />
+                ) : inputMode === "record" ? (
                   <div className="grid grid-cols-12 gap-4">
                     {/* Guided prompts — left */}
                     <div className="col-span-5">

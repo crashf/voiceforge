@@ -201,14 +201,17 @@ async def generate_clip(project_id: str, clip_id: str, db: AsyncSession = Depend
     await db.commit()
 
     try:
-        engine = get_engine(clip.engine)
-
-        # Get voice reference audio if it's a cloned voice
+        # Determine engine: prefer voice's engine over clip's default
+        engine_name = clip.engine
         reference_audio = None
         if clip.voice_id:
             voice = await db.get(Voice, clip.voice_id)
-            if voice and voice.embedding_path:
-                reference_audio = Path(voice.embedding_path)
+            if voice:
+                engine_name = voice.engine  # Use the voice's engine
+                if voice.embedding_path:
+                    reference_audio = Path(voice.embedding_path)
+
+        engine = get_engine(engine_name)
 
         # Output path
         project_dir = settings.projects_dir / project_id

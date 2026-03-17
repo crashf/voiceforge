@@ -1,7 +1,9 @@
 """VoiceForge API — main application entry point."""
 
+import json
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,14 +11,24 @@ from fastapi.staticfiles import StaticFiles
 
 from .config import settings
 from .database import init_db
-from .routers import voices, projects, engines
+from .routers import voices, projects, engines, settings as settings_router
 from .tts_engines.registry import register_engine
 
 logger = logging.getLogger("voiceforge")
 
+CONFIG_PATH = Path("/opt/voiceforge/backend/data/config.json")
+
+
+def _load_config() -> dict:
+    if CONFIG_PATH.exists():
+        return json.loads(CONFIG_PATH.read_text())
+    return {}
+
 
 def _register_engines():
     """Register all configured TTS engines."""
+    config = _load_config()
+
     # XTTS (local, free) — skip if TTS library not installed
     try:
         from .tts_engines.xtts_engine import XTTSEngine
@@ -24,19 +36,27 @@ def _register_engines():
     except ImportError:
         logger.warning("XTTS engine unavailable (TTS library not installed)")
 
+    # MiniMax — from config.json or env
+    mm_cfg = config.get("minimax", {})
+    mm_key = mm_cfg.get("api_key", "") or settings.minimax_api_key
+    if mm_key:
+        try:
+            from .tts_engines.minimax_engine import MiniMaxEngine
+            mm_model = mm_cfg.get("model", "speech-02-hd")
+            register_engine(MiniMaxEngine(api_key=mm_key, model=mm_model))
+            logger.info(f"MiniMax engine registered (model: {mm_model})")
+        except Exception as e:
+            logger.warning(f"MiniMax engine failed to register: {e}")
+
     # OpenAI — only if API key provided
-    if settings.openai_api_key:
+    oai_key = config.get("openai", {}).get("api_key", "") or settings.openai_api_key
+    if oai_key:
         from .tts_engines.openai_engine import OpenAIEngine
         register_engine(OpenAIEngine(
-            api_key=settings.openai_api_key,
+            api_key=oai_key,
             model=settings.openai_tts_model,
             default_voice=settings.openai_default_voice,
         ))
-
-    # ElevenLabs — only if API key provided
-    if settings.elevenlabs_api_key:
-        from .tts_engines.elevenlabs_engine import ElevenLabsEngine
-        register_engine(ElevenLabsEngine(api_key=settings.elevenlabs_api_key))
 
     # Ollama — only if model specified
     if settings.ollama_tts_model:
@@ -81,6 +101,7 @@ app.add_middleware(
 app.include_router(voices.router, prefix="/api")
 app.include_router(projects.router, prefix="/api")
 app.include_router(engines.router, prefix="/api")
+app.include_router(settings_router.router, prefix="/api")
 
 
 @app.get("/api/health")

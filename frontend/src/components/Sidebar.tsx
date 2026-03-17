@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from "react";
 import { getProjects, createProject, type ProjectSummary } from "@/lib/api";
-import { Mic, FolderOpen, Plus, AudioLines } from "lucide-react";
+import { Mic, FolderOpen, Plus, AudioLines, Settings } from "lucide-react";
 
 interface Props {
-  view: "projects" | "voicelab";
-  onViewChange: (v: "projects" | "voicelab") => void;
+  view: "projects" | "voicelab" | "settings";
+  onViewChange: (v: "projects" | "voicelab" | "settings") => void;
   selectedProjectId: string | null;
   onSelectProject: (id: string) => void;
 }
@@ -129,6 +129,20 @@ export default function Sidebar({ view, onViewChange, selectedProjectId, onSelec
           </div>
         )}
       </div>
+
+      {/* Settings */}
+      <button
+        onClick={() => onViewChange("settings")}
+        className="flex items-center gap-3 px-4 py-3 text-sm transition-colors hover:brightness-125 cursor-pointer border-t"
+        style={{
+          background: view === "settings" ? "var(--bg-tertiary)" : "transparent",
+          color: view === "settings" ? "var(--accent)" : "var(--text-secondary)",
+          borderColor: "var(--border)",
+        }}
+      >
+        <Settings size={18} />
+        Settings
+      </button>
     </aside>
   );
 }

@@ -10,3 +10,11 @@ data/
 *.egg-info/
 dist/
 build/
+__pycache__/
+*.pyc
+backend/venv/
+backend/data/
+backend/models/
+frontend/.next/
+frontend/node_modules/
+*.db
